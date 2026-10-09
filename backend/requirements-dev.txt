@@ -1,0 +1,5 @@
+-r requirements.txt
+pytest==9.1.1
+httpx==0.28.1
+# Bundled PostgreSQL for local dev/tests when no Postgres/Neon is available
+pgserver==0.1.4
