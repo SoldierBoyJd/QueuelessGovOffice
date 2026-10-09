@@ -1,4 +1,4 @@
-import { CheckCircle2, XCircle, Clock, ChevronRight } from 'lucide-react';
+import { CheckCircle2, XCircle, Clock } from 'lucide-react';
 
 const HISTORY = [
   { id: 'h1', token: 'A-184', service: 'Passport Services', office: 'Rajkot District Office', date: 'Today, 29 Sep 2026', status: 'WAITING',   wait: '42 min (est.)' },

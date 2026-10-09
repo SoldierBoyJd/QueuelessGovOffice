@@ -107,6 +107,7 @@ export default function App() {
         <Route index element={<Navigate to="dashboard" replace />} />
         <Route path="dashboard" element={<OfficeAdminDashboardPage />} />
         <Route path="counters" element={<OfficeAdminCountersPage />} />
+        <Route path="officers" element={<OfficeAdminCountersPage />} />
         <Route path="analytics" element={<OfficeAdminAnalyticsPage />} />
         <Route path="forecast" element={<OfficeAdminForecastPage />} />
         <Route path="verification" element={<OfficeAdminVerificationPage />} />

@@ -1,13 +1,11 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { MapPin, Clock, Phone, ChevronLeft, Users, Layers, ChevronRight, Check } from 'lucide-react';
+import { MapPin, Clock, Phone, ChevronLeft, Users, Layers, Check } from 'lucide-react';
 import { MOCK_OFFICES } from '../../mock/data';
-import { useDemoStore } from '../../stores/demoStore';
 
 export default function OfficeDetailPage() {
   const { officeId } = useParams();
   const navigate = useNavigate();
-  const { token } = useDemoStore();
   const office = MOCK_OFFICES.find(o => o.id === officeId) ?? MOCK_OFFICES[0];
   const [selectedService, setSelectedService] = useState<string | null>(null);
   const [taking, setTaking] = useState(false);

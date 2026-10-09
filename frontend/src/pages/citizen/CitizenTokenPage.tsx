@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MapPin, Clock, AlertTriangle, X, ChevronRight, Info } from 'lucide-react';
+import { MapPin, AlertTriangle, X, Info } from 'lucide-react';
 import { useDemoStore } from '../../stores/demoStore';
 
 export default function CitizenTokenPage() {
   const navigate = useNavigate();
-  const { token, queue, notifications } = useDemoStore();
+  const { token, notifications } = useDemoStore();
   const [cancelling, setCancelling] = useState(false);
   const [showCancel, setShowCancel] = useState(false);
 
@@ -26,12 +26,17 @@ export default function CitizenTokenPage() {
     navigate('/citizen/home');
   };
 
-  const STATUS_COLOR = {
-    WAITING: 'text-amber-600 bg-amber-50 border-amber-200/80',
-    CALLED: 'text-blue-600 bg-blue-50 border-blue-200/80',
-    SERVING: 'text-emerald-600 bg-emerald-50 border-emerald-200/80',
-    HOLD: 'text-slate-500 bg-slate-50 border-slate-200/80',
-  }[token.status] ?? 'text-amber-600 bg-amber-50 border-amber-200/80';
+  const STATUS_COLOR: Record<string, string> = {
+    WAITING:   'text-amber-600 bg-amber-50 border-amber-200/80',
+    CALLED:    'text-blue-600 bg-blue-50 border-blue-200/80',
+    SERVING:   'text-emerald-600 bg-emerald-50 border-emerald-200/80',
+    HOLD:      'text-slate-500 bg-slate-50 border-slate-200/80',
+    CREATED:   'text-slate-500 bg-slate-50 border-slate-200/80',
+    COMPLETED: 'text-emerald-600 bg-emerald-50 border-emerald-200/80',
+    NO_SHOW:   'text-red-600 bg-red-50 border-red-200/80',
+    CANCELLED: 'text-slate-400 bg-slate-50 border-slate-200/80',
+  };
+  const statusColorClass = STATUS_COLOR[token.status] ?? 'text-amber-600 bg-amber-50 border-amber-200/80';
 
   return (
     <div className="max-w-[700px] mx-auto flex flex-col gap-5 mt-1">
@@ -55,7 +60,7 @@ export default function CitizenTokenPage() {
             <div>
               <div className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1">Virtual Queue Token</div>
               <div className="text-[56px] font-black text-slate-900 tracking-tight leading-none">{token.displayNumber}</div>
-              <div className={`inline-flex items-center gap-1.5 mt-2 px-3 py-1 rounded-full border text-[11.5px] font-bold ${STATUS_COLOR}`}>
+              <div className={`inline-flex items-center gap-1.5 mt-2 px-3 py-1 rounded-full border text-[11.5px] font-bold ${statusColorClass}`}>
                 <span className="w-2 h-2 rounded-full bg-current animate-pulse" />
                 {token.status}
               </div>

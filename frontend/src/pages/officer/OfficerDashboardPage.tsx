@@ -41,7 +41,7 @@ export default function OfficerDashboardPage() {
     CALLED:    'text-purple-600 bg-purple-50 border-purple-200/60',
   };
 
-  const avgMin = Math.floor(myCounter?.avgServiceSeconds / 60 ?? 0);
+  const avgMin = Math.floor((myCounter?.avgServiceSeconds ?? 0) / 60);
   const avgSec = (myCounter?.avgServiceSeconds ?? 0) % 60;
 
   return (

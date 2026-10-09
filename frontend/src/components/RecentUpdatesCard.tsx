@@ -1,5 +1,5 @@
 import React from 'react';
-import { AlertTriangle, Info, FileText, Check } from 'lucide-react';
+import { AlertTriangle, Info, Check } from 'lucide-react';
 import type { AppNotification } from '../types';
 
 interface RecentUpdatesCardProps {
