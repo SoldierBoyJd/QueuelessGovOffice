@@ -28,6 +28,16 @@ export const adminApi = {
       role: 'OFFICER', office_id: body.officeId, ...(body.counterId ? { counter_id: body.counterId } : {}),
     }).then(r => toUser(r.data)),
 
+  createStaff: (body: { fullName: string; email: string; password: string; role: 'OFFICER' | 'OFFICE_ADMIN'; officeId: string }) =>
+    apiClient.post('/admin/users', {
+      full_name: body.fullName, email: body.email, password: body.password,
+      role: body.role, office_id: body.officeId,
+    }).then(r => toUser(r.data)),
+
+  /** Super admin: change a user's role and/or office. */
+  changeRole: (id: string, role: Role, officeId?: string) =>
+    apiClient.patch(`/admin/users/${id}/role`, { role, ...(officeId ? { office_id: officeId } : {}) }).then(r => toUser(r.data)),
+
   /** Rename a counter and/or change the service it handles (`null` = all services). */
   updateCounter: (id: string, body: { name?: string; serviceId?: string | null }) =>
     apiClient.patch(`/admin/counters/${id}`, {
