@@ -14,7 +14,7 @@ export default function CitizenHomePage() {
       {/* Left 7 Columns */}
       <div className="lg:col-span-7 flex flex-col gap-5">
         <HeroQueueCard token={token} queue={queue} />
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
           <LiveQueueCard queue={queue} />
           <QueueMovementChart />
         </div>

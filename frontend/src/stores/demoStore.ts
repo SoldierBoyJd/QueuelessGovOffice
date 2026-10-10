@@ -1,7 +1,7 @@
 /**
- * Demo store — drives the hackathon demo flow.
- * All dashboard pages subscribe to this store for live state.
- * Changes here trigger UI updates across Citizen, Officer, and Admin views.
+ * Demo store — drives the real-time demo flow.
+ * Simulates WebSocket events: reconnect loop, live ETA drift.
+ * All role dashboards subscribe here so actions propagate everywhere.
  */
 import { create } from 'zustand';
 import type { Token, Counter, Queue, AppNotification } from '../types';
@@ -36,6 +36,10 @@ interface DemoState {
 
   // Connection
   setWsStatus: (s: 'LIVE' | 'RECONNECTING' | 'OFFLINE') => void;
+
+  // Internal — WebSocket sim
+  _wsSimStarted: boolean;
+  startWsSim: () => void;
 }
 
 export const useDemoStore = create<DemoState>((set, get) => ({
@@ -44,16 +48,54 @@ export const useDemoStore = create<DemoState>((set, get) => ({
   queue: MOCK_QUEUE,
   notifications: MOCK_NOTIFICATIONS,
   wsStatus: 'LIVE',
+  _wsSimStarted: false,
 
+  // ── WebSocket simulation ────────────────────────────────────────────────────
+  startWsSim: () => {
+    if (get()._wsSimStarted) return;
+    set({ _wsSimStarted: true });
+
+    // Simulate occasional reconnect events (every 90–180s)
+    const scheduleReconnect = () => {
+      const delay = 90_000 + Math.random() * 90_000;
+      setTimeout(() => {
+        set({ wsStatus: 'RECONNECTING' });
+        setTimeout(() => {
+          set({ wsStatus: 'LIVE' });
+          scheduleReconnect();
+        }, 2500 + Math.random() * 1500);
+      }, delay);
+    };
+    scheduleReconnect();
+
+    // Simulate live queue count drift every 15s (±1–3 people)
+    const queueTicker = setInterval(() => {
+      const { queue } = get();
+      const drift = Math.floor(Math.random() * 3) - 1; // -1, 0, or +1
+      const newWaiting = Math.max(0, queue.totalWaiting + drift);
+      set({
+        queue: {
+          ...queue,
+          totalWaiting: newWaiting,
+          lastUpdated: new Date().toISOString(),
+        },
+      });
+    }, 15_000);
+
+    // Clean up on hot-reload (dev only)
+    if (import.meta.hot) {
+      import.meta.hot.dispose(() => clearInterval(queueTicker));
+    }
+  },
+
+  // ── Officer actions ─────────────────────────────────────────────────────────
   completeCurrentToken: () => {
     const { queue, token } = get();
-    // Move first SERVING token to COMPLETED, shift queue
     const updatedTokens = queue.tokens.map((t) =>
       t.status === 'SERVING' && t.tokenId === 'tok-183'
         ? { ...t, status: 'COMPLETED' as const }
         : t
     );
-    // Reduce peopleAhead for citizen
     const newPeopleAhead = Math.max(0, token.peopleAhead - 1);
     const newWait = Math.max(0, token.prediction.estimatedWaitMinutes - 8);
     set({
@@ -118,20 +160,22 @@ export const useDemoStore = create<DemoState>((set, get) => ({
     });
   },
 
+  // ── Admin counter actions ───────────────────────────────────────────────────
   pauseCounter: (counterId) => {
     const { counters, token } = get();
     const updated = counters.map((c) =>
-      c.id === counterId ? { ...c, status: 'PAUSED' as const, currentTokenDisplay: undefined, currentCitizenName: undefined } : c
+      c.id === counterId
+        ? { ...c, status: 'PAUSED' as const, currentTokenDisplay: undefined, currentCitizenName: undefined }
+        : c
     );
     const activeCount = updated.filter((c) => c.status === 'ACTIVE').length;
-    // ETA degrades when counter 03 paused
     const etaChange = counterId === 'ctr-003' ? 22 : 0;
     const newWait = token.prediction.estimatedWaitMinutes + etaChange;
     const notification: AppNotification = {
       id: `n-${Date.now()}`,
       type: 'WARNING',
       title: 'ETA Updated',
-      message: `Your estimated turn moved from ${token.prediction.estimatedTurnTime} → 3:04 PM. Counter ${counterId === 'ctr-003' ? '03' : ''} temporarily unavailable.`,
+      message: `Your estimated turn moved from ${token.prediction.estimatedTurnTime} → 3:04 PM. Counter ${counterId === 'ctr-003' ? '03' : counterId} temporarily unavailable.`,
       timestamp: new Date().toISOString(),
       read: false,
       tokenId: token.id,
@@ -146,11 +190,7 @@ export const useDemoStore = create<DemoState>((set, get) => ({
           estimatedTurnTime: etaChange > 0 ? '3:04 PM' : token.prediction.estimatedTurnTime,
         },
       },
-      queue: {
-        ...get().queue,
-        activeCounters: activeCount,
-        lastUpdated: new Date().toISOString(),
-      },
+      queue: { ...get().queue, activeCounters: activeCount, lastUpdated: new Date().toISOString() },
       notifications: [notification, ...get().notifications],
     });
   },
@@ -161,9 +201,17 @@ export const useDemoStore = create<DemoState>((set, get) => ({
       c.id === counterId ? { ...c, status: 'ACTIVE' as const } : c
     );
     const activeCount = updated.filter((c) => c.status === 'ACTIVE').length;
-    // ETA improves when counter reopens
     const etaImprovement = counterId === 'ctr-003' ? 15 : 0;
     const newWait = Math.max(10, token.prediction.estimatedWaitMinutes - etaImprovement);
+    const notification: AppNotification = {
+      id: `n-${Date.now()}`,
+      type: 'SUCCESS',
+      title: 'Counter Reopened',
+      message: `Counter ${counterId === 'ctr-003' ? '03' : counterId} is back online. Your estimated turn improved to ${etaImprovement > 0 ? '2:49 PM' : token.prediction.estimatedTurnTime}.`,
+      timestamp: new Date().toISOString(),
+      read: false,
+      tokenId: token.id,
+    };
     set({
       counters: updated,
       token: {
@@ -174,11 +222,8 @@ export const useDemoStore = create<DemoState>((set, get) => ({
           estimatedTurnTime: etaImprovement > 0 ? '2:49 PM' : token.prediction.estimatedTurnTime,
         },
       },
-      queue: {
-        ...get().queue,
-        activeCounters: activeCount,
-        lastUpdated: new Date().toISOString(),
-      },
+      queue: { ...get().queue, activeCounters: activeCount, lastUpdated: new Date().toISOString() },
+      notifications: [notification, ...get().notifications],
     });
   },
 
@@ -190,9 +235,12 @@ export const useDemoStore = create<DemoState>((set, get) => ({
     set({ counters: updated });
   },
 
+  // ── Notifications ───────────────────────────────────────────────────────────
   markNotificationRead: (id) => {
     set((s) => ({
-      notifications: s.notifications.map((n) => n.id === id ? { ...n, read: true } : n),
+      notifications: s.notifications.map((n) =>
+        n.id === id ? { ...n, read: true } : n
+      ),
     }));
   },
 

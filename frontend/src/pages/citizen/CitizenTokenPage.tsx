@@ -2,12 +2,24 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MapPin, AlertTriangle, X, Info } from 'lucide-react';
 import { useDemoStore } from '../../stores/demoStore';
+import { NoActiveToken } from '../../components/ui/EmptyState';
 
 export default function CitizenTokenPage() {
   const navigate = useNavigate();
   const { token, notifications } = useDemoStore();
   const [cancelling, setCancelling] = useState(false);
   const [showCancel, setShowCancel] = useState(false);
+
+  // Show empty state if no active token
+  if (!token || token.status === 'COMPLETED' || token.status === 'CANCELLED') {
+    return (
+      <div className="max-w-[700px] mx-auto mt-1">
+        <div className="bg-white/95 backdrop-blur-md rounded-[28px] border border-slate-100/90 shadow-[0_8px_30px_rgba(0,0,0,0.04)]">
+          <NoActiveToken />
+        </div>
+      </div>
+    );
+  }
 
   const unreadNotifs = notifications.filter(n => !n.read);
   const latestEta = unreadNotifs.find(n => n.title.includes('ETA'));
@@ -144,7 +156,7 @@ export default function CitizenTokenPage() {
       </div>
 
       {/* Action buttons */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <button onClick={() => navigate(`/citizen/offices/${token.officeId}`)}
           className="flex items-center justify-center gap-2 py-3 rounded-2xl border border-slate-200/80 bg-white/90 text-slate-700 font-bold text-[13px] hover:bg-slate-50 transition-all">
           <MapPin className="w-4 h-4" /> View Office

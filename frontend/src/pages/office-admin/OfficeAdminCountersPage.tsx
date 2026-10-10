@@ -1,16 +1,18 @@
 import { Play, Pause, X, RotateCcw } from 'lucide-react';
 import { useDemoStore } from '../../stores/demoStore';
 import { useState } from 'react';
+import { toast } from '../../components/ui/Toast';
 
 export default function OfficeAdminCountersPage() {
   const { counters, pauseCounter, resumeCounter, closeCounter } = useDemoStore();
   const [loading, setLoading] = useState<string | null>(null);
 
-  const doAction = async (key: string, fn: () => void) => {
+  const doAction = async (key: string, fn: () => void, successMsg: string) => {
     setLoading(key);
     await new Promise(r => setTimeout(r, 500));
     fn();
     setLoading(null);
+    toast.info(successMsg);
   };
 
   const STATUS_STYLE: Record<string, { dot: string; pill: string; label: string }> = {
@@ -28,7 +30,7 @@ export default function OfficeAdminCountersPage() {
       </div>
 
       {/* Summary bar */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {(['ACTIVE','PAUSED','CLOSED','BREAK'] as const).map(s => {
           const count = counters.filter(c => c.status === s).length;
           const st = STATUS_STYLE[s];
@@ -99,25 +101,25 @@ export default function OfficeAdminCountersPage() {
               {/* Actions */}
               <div className="flex gap-2">
                 {c.status === 'ACTIVE' && (
-                  <button onClick={() => doAction(`p-${c.id}`, () => pauseCounter(c.id))} disabled={loading !== null}
+                  <button onClick={() => doAction(`p-${c.id}`, () => pauseCounter(c.id), `${c.name} paused — citizen ETAs updated`)} disabled={loading !== null}
                     className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl border border-amber-200/80 bg-amber-50 hover:bg-amber-100 text-amber-700 font-bold text-[12px] transition-colors disabled:opacity-50">
                     <Pause className="w-3.5 h-3.5" />{loading === `p-${c.id}` ? '…' : 'Pause'}
                   </button>
                 )}
                 {c.status === 'PAUSED' && (
-                  <button onClick={() => doAction(`r-${c.id}`, () => resumeCounter(c.id))} disabled={loading !== null}
+                  <button onClick={() => doAction(`r-${c.id}`, () => resumeCounter(c.id), `${c.name} resumed — ETAs improved`)} disabled={loading !== null}
                     className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl border border-emerald-200/80 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 font-bold text-[12px] transition-colors disabled:opacity-50">
                     <Play className="w-3.5 h-3.5" />{loading === `r-${c.id}` ? '…' : 'Resume'}
                   </button>
                 )}
                 {c.status === 'CLOSED' && (
-                  <button onClick={() => doAction(`o-${c.id}`, () => resumeCounter(c.id))} disabled={loading !== null}
+                  <button onClick={() => doAction(`o-${c.id}`, () => resumeCounter(c.id), `${c.name} opened`)} disabled={loading !== null}
                     className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[12px] transition-colors disabled:opacity-50">
                     <RotateCcw className="w-3.5 h-3.5" />{loading === `o-${c.id}` ? '…' : 'Open'}
                   </button>
                 )}
                 {c.status !== 'CLOSED' && (
-                  <button onClick={() => doAction(`c-${c.id}`, () => closeCounter(c.id))} disabled={loading !== null}
+                  <button onClick={() => doAction(`c-${c.id}`, () => closeCounter(c.id), `${c.name} closed`)} disabled={loading !== null}
                     className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200/80 hover:bg-slate-50 text-slate-500 font-bold text-[12px] transition-colors disabled:opacity-50">
                     <X className="w-3.5 h-3.5" />
                   </button>

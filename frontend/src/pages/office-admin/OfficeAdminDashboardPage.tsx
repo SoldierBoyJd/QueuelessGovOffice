@@ -28,7 +28,7 @@ export default function OfficeAdminDashboardPage() {
       </div>
 
       {/* Top metrics */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
         {[
           { label: 'Waiting',     value: queue.totalWaiting,   icon: <Users className="w-4 h-4" />,       color: 'text-amber-600',   bg: 'bg-amber-50' },
           { label: 'Serving',     value: queue.totalServing,    icon: <MonitorCheck className="w-4 h-4" />,color: 'text-blue-600',    bg: 'bg-blue-50' },
@@ -44,7 +44,7 @@ export default function OfficeAdminDashboardPage() {
       </div>
 
       {/* Secondary metrics */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="bg-white/95 backdrop-blur-md rounded-[20px] border border-slate-100/90 shadow-[0_4px_24px_rgba(0,0,0,0.03)] p-5 flex items-center gap-4">
           <div className="w-10 h-10 rounded-2xl bg-slate-50 border border-slate-200/80 flex items-center justify-center text-slate-600"><Clock className="w-5 h-5" /></div>
           <div><div className="text-[11.5px] text-slate-400 font-semibold uppercase tracking-wide">Average wait</div><div className="text-[24px] font-black text-slate-900">{avgWait} <span className="text-[14px] font-semibold text-slate-500">min</span></div></div>

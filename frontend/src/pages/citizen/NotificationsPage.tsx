@@ -1,5 +1,6 @@
 import { AlertTriangle, Info, CheckCircle2, XCircle } from 'lucide-react';
 import { useDemoStore } from '../../stores/demoStore';
+import { NoNotifications } from '../../components/ui/EmptyState';
 import type { NotificationType } from '../../types';
 
 const TYPE_CONFIG: Record<NotificationType, { icon: React.ComponentType<{ className?: string }>, bg: string, text: string, border: string }> = {
@@ -34,10 +35,7 @@ export default function NotificationsPage() {
 
       <div className="flex flex-col gap-2.5">
         {notifications.length === 0 ? (
-          <div className="text-center py-12 bg-white/95 rounded-[24px] border border-slate-100/90">
-            <p className="text-[14px] font-bold text-slate-700">No notifications</p>
-            <p className="text-[12.5px] text-slate-400 mt-1">You're all caught up.</p>
-          </div>
+          <NoNotifications />
         ) : notifications.map(n => {
           const cfg = TYPE_CONFIG[n.type] ?? TYPE_CONFIG.INFO;
           const Icon = cfg.icon;

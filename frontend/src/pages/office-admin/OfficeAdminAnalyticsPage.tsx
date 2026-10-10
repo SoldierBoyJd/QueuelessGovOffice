@@ -29,7 +29,7 @@ export default function OfficeAdminAnalyticsPage() {
       </div>
 
       {/* Summary cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
         {[
           { label: 'Tokens issued',   value: '127', delta: '+12%', up: true  },
           { label: 'Avg wait (min)',  value: '27',  delta: '-4%',  up: false },

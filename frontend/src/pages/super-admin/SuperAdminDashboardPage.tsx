@@ -40,7 +40,7 @@ export default function SuperAdminDashboardPage() {
       </div>
 
       {/* System health summary */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {[
           { label: 'Healthy',  value: healthy,  icon: <CheckCircle2 className="w-4 h-4" />, color: 'text-emerald-600', bg: 'bg-emerald-50' },
           { label: 'Degraded', value: degraded, icon: <AlertTriangle className="w-4 h-4" />, color: 'text-amber-600',   bg: 'bg-amber-50'   },

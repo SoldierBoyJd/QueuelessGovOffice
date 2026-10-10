@@ -56,9 +56,9 @@ export default function SuperAdminModelsPage() {
       </div>
 
       {/* Model registry table */}
-      <div className="bg-white/95 backdrop-blur-md rounded-[24px] border border-slate-100/90 shadow-[0_4px_24px_rgba(0,0,0,0.03)] p-5">
+      <div className="bg-white/95 backdrop-blur-md rounded-[24px] border border-slate-100/90 shadow-[0_4px_24px_rgba(0,0,0,0.03)] p-5 overflow-x-auto">
         <h3 className="text-[14.5px] font-bold text-slate-900 mb-4">Model Registry</h3>
-        <div className="grid grid-cols-12 text-[11.5px] font-semibold text-slate-400 uppercase tracking-wide px-2 py-2 border-b border-slate-100">
+        <div className="grid grid-cols-12 min-w-[560px] text-[11.5px] font-semibold text-slate-400 uppercase tracking-wide px-2 py-2 border-b border-slate-100">
           <div className="col-span-3">Name</div>
           <div className="col-span-3">Version</div>
           <div className="col-span-2 text-right">Accuracy</div>
@@ -67,7 +67,7 @@ export default function SuperAdminModelsPage() {
         </div>
         <div className="divide-y divide-slate-50">
           {MOCK_AI_MODELS.map(m => (
-            <div key={m.id} className="grid grid-cols-12 items-center px-2 py-3.5 hover:bg-slate-50/50 transition-colors">
+            <div key={m.id} className="grid grid-cols-12 min-w-[560px] items-center px-2 py-3.5 hover:bg-slate-50/50 transition-colors">
               <div className="col-span-3 font-bold text-[13px] text-slate-900">{m.name}</div>
               <div className="col-span-3 font-mono text-[12px] text-slate-500">{m.version}</div>
               <div className="col-span-2 text-right font-black text-[13px] text-slate-900">{m.accuracy ? `${m.accuracy}%` : '—'}</div>

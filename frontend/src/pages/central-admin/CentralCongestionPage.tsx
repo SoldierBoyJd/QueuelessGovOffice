@@ -44,7 +44,7 @@ export default function CentralCongestionPage() {
       </div>
 
       {/* Summary counts */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {([['HIGH', highOffices.length], ['BUSY', busyOffices.length], ['NORMAL', MOCK_OFFICE_SUMMARIES.filter(o => o.congestion === 'NORMAL').length]] as [CongestionLevel, number][]).map(([c, n]) => (
           <div key={c} className={`rounded-[20px] border p-5 ${CONG_STYLE[c].pill}`}>
             <div className="text-[28px] font-black tracking-tight">{n}</div>

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { CheckCircle2, AlertTriangle, XCircle, Info, FileText, Mail, Phone, Building2, Shield, ChevronRight } from 'lucide-react';
 import { MOCK_VERIFICATION } from '../../mock/data';
 import type { VerificationFindingType, VerificationStatus } from '../../types';
+import { toast } from '../../components/ui/Toast';
 
 const FINDING_CONFIG: Record<VerificationFindingType, { icon: React.ComponentType<{ className?: string }>, color: string, bg: string }> = {
   SUCCESS: { icon: CheckCircle2,  color: 'text-emerald-600', bg: 'bg-emerald-50 border-emerald-200/80' },
@@ -48,9 +49,9 @@ export default function VerificationCopilotPage() {
   const doDecision = async (decision: 'APPROVE' | 'REJECT' | 'MORE_INFO') => {
     setSubmitting(decision);
     await new Promise(r => setTimeout(r, 900));
-    if (decision === 'APPROVE')    setStatus('APPROVED');
-    if (decision === 'REJECT')     setStatus('REJECTED');
-    if (decision === 'MORE_INFO')  setStatus('MORE_INFO_REQUIRED');
+    if (decision === 'APPROVE')   { setStatus('APPROVED'); toast.success('Application approved', `${app.applicantName} has been approved as ${app.requestedRole}.`); }
+    if (decision === 'REJECT')    { setStatus('REJECTED'); toast.error('Application rejected', 'The applicant has been notified.'); }
+    if (decision === 'MORE_INFO') { setStatus('MORE_INFO_REQUIRED'); toast.warning('More info requested', 'The applicant will be asked for additional documents.'); }
     setDone(decision);
     setSubmitting(null);
   };
@@ -60,8 +61,8 @@ export default function VerificationCopilotPage() {
   const warningCount  = app.findings.filter(f => f.type === 'WARNING').length;
 
   return (
-    <div className="min-h-screen bg-[#f4f6fa] p-6">
-      <div className="max-w-[1200px] mx-auto flex flex-col gap-5">
+    <div className="flex flex-col gap-5">
+      <div className="max-w-[1200px] w-full mx-auto flex flex-col gap-5">
         {/* Page header */}
         <div className="flex items-start justify-between">
           <div>
@@ -251,7 +252,7 @@ export default function VerificationCopilotPage() {
                       className="w-full liquid-glass-search rounded-xl px-3.5 py-2.5 text-[13px] text-slate-800 placeholder-slate-400 outline-none font-medium resize-none" />
                   </div>
 
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <button onClick={() => doDecision('APPROVE')} disabled={submitting !== null}
                       className="flex flex-col items-center gap-1.5 py-4 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[13px] transition-all shadow-[0_4px_12px_rgba(34,197,94,0.2)] disabled:opacity-50">
                       <CheckCircle2 className="w-5 h-5" />

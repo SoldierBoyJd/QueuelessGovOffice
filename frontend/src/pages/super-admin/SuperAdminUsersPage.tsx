@@ -51,7 +51,7 @@ export default function SuperAdminUsersPage() {
       </div>
 
       <div className="flex items-center gap-3 flex-wrap">
-        <div className="liquid-glass-search rounded-xl px-3.5 py-2 flex items-center gap-2.5 flex-1 min-w-[240px]">
+        <div className="liquid-glass-search rounded-xl px-3.5 py-2 flex items-center gap-2.5 flex-1 min-w-[560px]">
           <Search className="w-4 h-4 text-slate-400 flex-shrink-0" />
           <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search by name or email…"
             className="w-full bg-transparent text-[13px] text-slate-800 placeholder-slate-400 outline-none font-medium" />
@@ -66,8 +66,8 @@ export default function SuperAdminUsersPage() {
         </div>
       </div>
 
-      <div className="bg-white/95 backdrop-blur-md rounded-[24px] border border-slate-100/90 shadow-[0_4px_24px_rgba(0,0,0,0.03)] overflow-hidden">
-        <div className="grid grid-cols-12 px-5 py-3 border-b border-slate-100 text-[11.5px] font-semibold text-slate-400 uppercase tracking-wide">
+      <div className="bg-white/95 backdrop-blur-md rounded-[24px] border border-slate-100/90 shadow-[0_4px_24px_rgba(0,0,0,0.03)] overflow-x-auto">
+        <div className="grid grid-cols-12 min-w-[560px] px-5 py-3 border-b border-slate-100 text-[11.5px] font-semibold text-slate-400 uppercase tracking-wide">
           <div className="col-span-3">User</div>
           <div className="col-span-3">Email</div>
           <div className="col-span-2">Role</div>
@@ -76,7 +76,7 @@ export default function SuperAdminUsersPage() {
         </div>
         <div className="divide-y divide-slate-50">
           {filtered.map(u => (
-            <div key={u.id} className="grid grid-cols-12 items-center px-5 py-3.5 hover:bg-slate-50/50 transition-colors">
+            <div key={u.id} className="grid grid-cols-12 min-w-[560px] items-center px-5 py-3.5 hover:bg-slate-50/50 transition-colors">
               <div className="col-span-3 flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-full bg-slate-200 text-slate-700 text-[11px] font-black flex items-center justify-center flex-shrink-0">{u.avatarInitials}</div>
                 <span className="text-[13px] font-bold text-slate-900">{u.name}</span>

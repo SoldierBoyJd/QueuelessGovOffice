@@ -10,6 +10,7 @@ export default function CentralAdminLayout() {
     '/central/offices':    { title: 'Office Directory',          sub: 'All monitored government offices'                },
     '/central/congestion': { title: 'Congestion Intelligence',   sub: 'Real-time pressure across government offices'    },
     '/central/analytics':  { title: 'National Analytics',        sub: 'Aggregate service performance'                   },
+    '/central/map':        { title: 'Live Map',                  sub: 'Real-time office congestion across India'        },
   };
   const current = Object.entries(titleMap).find(([k]) => location.pathname.startsWith(k))?.[1];
 
@@ -24,7 +25,7 @@ export default function CentralAdminLayout() {
           { id: 'offices',    label: 'Offices',      icon: Building2,       route: '/central/offices'    },
           { id: 'congestion', label: 'Congestion',   icon: AlertTriangle,   route: '/central/congestion' },
           { id: 'analytics',  label: 'Analytics',    icon: BarChart2,       route: '/central/analytics'  },
-          { id: 'map',        label: 'Live Map',     icon: Map,             route: '/central/dashboard'  },
+          { id: 'map',        label: 'Live Map',     icon: Map,             route: '/central/map'        },
         ],
       }]}
     />

@@ -44,7 +44,7 @@ export default function SuperAdminAuditPage() {
       </div>
 
       <div className="flex items-center gap-3 flex-wrap">
-        <div className="liquid-glass-search rounded-xl px-3.5 py-2 flex items-center gap-2.5 flex-1 min-w-[280px]">
+        <div className="liquid-glass-search rounded-xl px-3.5 py-2 flex items-center gap-2.5 flex-1 min-w-[560px]">
           <Search className="w-4 h-4 text-slate-400 flex-shrink-0" />
           <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search actors, actions, resources…"
             className="w-full bg-transparent text-[13px] text-slate-800 placeholder-slate-400 outline-none font-medium" />
@@ -59,8 +59,8 @@ export default function SuperAdminAuditPage() {
         </div>
       </div>
 
-      <div className="bg-white/95 backdrop-blur-md rounded-[24px] border border-slate-100/90 shadow-[0_4px_24px_rgba(0,0,0,0.03)] overflow-hidden">
-        <div className="grid grid-cols-12 px-5 py-3 border-b border-slate-100 text-[11.5px] font-semibold text-slate-400 uppercase tracking-wide">
+      <div className="bg-white/95 backdrop-blur-md rounded-[24px] border border-slate-100/90 shadow-[0_4px_24px_rgba(0,0,0,0.03)] overflow-x-auto">
+        <div className="grid grid-cols-12 min-w-[560px] px-5 py-3 border-b border-slate-100 text-[11.5px] font-semibold text-slate-400 uppercase tracking-wide">
           <div className="col-span-2">Time</div>
           <div className="col-span-3">Actor</div>
           <div className="col-span-4">Action</div>
@@ -69,7 +69,7 @@ export default function SuperAdminAuditPage() {
         </div>
         <div className="divide-y divide-slate-50">
           {filtered.map(l => (
-            <div key={l.id} className="grid grid-cols-12 items-center px-5 py-3 hover:bg-slate-50/50 transition-colors">
+            <div key={l.id} className="grid grid-cols-12 min-w-[560px] items-center px-5 py-3 hover:bg-slate-50/50 transition-colors">
               <div className="col-span-2 text-[11.5px] text-slate-400 font-medium">
                 {new Date(l.ts).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
                 <div className="text-[10.5px] text-slate-300">{new Date(l.ts).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</div>

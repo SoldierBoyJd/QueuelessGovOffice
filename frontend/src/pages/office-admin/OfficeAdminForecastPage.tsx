@@ -27,7 +27,7 @@ export default function OfficeAdminForecastPage() {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
         {/* Main chart */}
         <div className="lg:col-span-8 flex flex-col gap-5">
-          <div className="bg-white/95 backdrop-blur-md rounded-[24px] border border-slate-100/90 shadow-[0_4px_24px_rgba(0,0,0,0.03)] p-5">
+          <div className="bg-white/95 backdrop-blur-md rounded-[24px] border border-slate-100/90 shadow-[0_4px_24px_rgba(0,0,0,0.03)] p-5 overflow-x-auto">
             <div className="flex items-center justify-between mb-1">
               <h3 className="text-[14.5px] font-bold text-slate-900">Hourly Queue Forecast</h3>
               <div className="flex items-center gap-1.5 text-[11.5px] text-slate-400 font-medium">
@@ -64,9 +64,9 @@ export default function OfficeAdminForecastPage() {
           </div>
 
           {/* Hourly table */}
-          <div className="bg-white/95 backdrop-blur-md rounded-[24px] border border-slate-100/90 shadow-[0_4px_24px_rgba(0,0,0,0.03)] p-5">
+          <div className="bg-white/95 backdrop-blur-md rounded-[24px] border border-slate-100/90 shadow-[0_4px_24px_rgba(0,0,0,0.03)] p-5 overflow-x-auto">
             <h3 className="text-[14.5px] font-bold text-slate-900 mb-4">Hour-by-Hour Breakdown</h3>
-            <div className="grid grid-cols-12 text-[11.5px] font-semibold text-slate-400 uppercase tracking-wide px-2 py-2 border-b border-slate-100">
+            <div className="grid grid-cols-12 min-w-[560px] text-[11.5px] font-semibold text-slate-400 uppercase tracking-wide px-2 py-2 border-b border-slate-100">
               <div className="col-span-2">Hour</div>
               <div className="col-span-3 text-right">Expected</div>
               <div className="col-span-3 text-right">Range</div>
@@ -74,7 +74,7 @@ export default function OfficeAdminForecastPage() {
             </div>
             <div className="divide-y divide-slate-50">
               {forecast.hourlyForecast.map(h => (
-                <div key={h.hour} className={`grid grid-cols-12 items-center px-2 py-2.5 ${h.isCongested ? 'bg-red-50/30' : ''}`}>
+                <div key={h.hour} className={`grid grid-cols-12 min-w-[560px] items-center px-2 py-2.5 ${h.isCongested ? 'bg-red-50/30' : ''}`}>
                   <div className="col-span-2 font-bold text-[13px] text-slate-800">{h.hour}</div>
                   <div className="col-span-3 text-right font-black text-[14px] text-slate-900">{h.expected}</div>
                   <div className="col-span-3 text-right text-[12px] text-slate-400">{h.lower}–{h.upper}</div>
@@ -92,7 +92,7 @@ export default function OfficeAdminForecastPage() {
         {/* Right panel */}
         <div className="lg:col-span-4 flex flex-col gap-5">
           {/* Reasons */}
-          <div className="bg-white/95 backdrop-blur-md rounded-[24px] border border-slate-100/90 shadow-[0_4px_24px_rgba(0,0,0,0.03)] p-5">
+          <div className="bg-white/95 backdrop-blur-md rounded-[24px] border border-slate-100/90 shadow-[0_4px_24px_rgba(0,0,0,0.03)] p-5 overflow-x-auto">
             <h3 className="text-[14.5px] font-bold text-slate-900 mb-3">Forecast Reasons</h3>
             <ul className="space-y-2.5">
               {forecast.reasons.map((r, i) => (
@@ -107,7 +107,7 @@ export default function OfficeAdminForecastPage() {
           </div>
 
           {/* Recommendation */}
-          <div className="bg-white/95 backdrop-blur-md rounded-[24px] border border-slate-100/90 shadow-[0_4px_24px_rgba(0,0,0,0.03)] p-5">
+          <div className="bg-white/95 backdrop-blur-md rounded-[24px] border border-slate-100/90 shadow-[0_4px_24px_rgba(0,0,0,0.03)] p-5 overflow-x-auto">
             <div className="flex items-center gap-2 mb-3">
               <TrendingUp className="w-4 h-4 text-emerald-600" />
               <h3 className="text-[14.5px] font-bold text-slate-900">Recommendation</h3>

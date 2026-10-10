@@ -1,4 +1,5 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Check, ChevronRight, Info, BadgeCheck, Building } from 'lucide-react';
 import type { Token, Queue } from '../types';
 
@@ -16,6 +17,7 @@ const STATUS_BADGE: Record<string, { bg: string; dot: string; text: string; labe
 };
 
 export const HeroQueueCard: React.FC<HeroQueueCardProps> = ({ token, queue }) => {
+  const navigate = useNavigate();
   const displayNum  = token?.displayNumber   ?? 'A-184';
   const status      = token?.status          ?? 'WAITING';
   const serviceName = token?.serviceName     ?? 'Passport Services';
@@ -65,7 +67,7 @@ export const HeroQueueCard: React.FC<HeroQueueCardProps> = ({ token, queue }) =>
               <span className="text-[12px] font-semibold text-slate-400 tracking-wide uppercase">Estimated Turn</span>
               <div className="text-[44px] font-black text-slate-900 tracking-tight leading-none mt-1">{turnTime}</div>
             </div>
-            <button className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-50 rounded-xl transition-all">
+            <button onClick={() => navigate('/citizen/token')} className="p-2 text-slate-400 hover:text-slate-700 hover:bg-slate-50 rounded-xl transition-all">
               <ChevronRight className="w-5 h-5" />
             </button>
           </div>
@@ -97,8 +99,8 @@ export const HeroQueueCard: React.FC<HeroQueueCardProps> = ({ token, queue }) =>
         ))}
       </div>
 
-      {/* Progress Stepper */}
-      <div className="pt-6">
+      {/* Progress Stepper — hidden on xs, visible on sm+ */}
+      <div className="pt-6 hidden sm:block">
         <div className="relative flex items-center justify-between">
           <div className="flex flex-col items-start z-10">
             <div className="w-7 h-7 rounded-full bg-red-600 text-white flex items-center justify-center shadow-sm shadow-red-200">

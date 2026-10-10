@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { CheckCircle2, PauseCircle, UserX, ChevronRight, Clock, Users, TrendingUp, Hash } from 'lucide-react';
 import { useDemoStore } from '../../stores/demoStore';
 import { useAuthStore } from '../../stores/authStore';
+import { toast } from '../../components/ui/Toast';
 
 export default function OfficerDashboardPage() {
   const { user } = useAuthStore();
@@ -23,6 +24,10 @@ export default function OfficerDashboardPage() {
     await new Promise(r => setTimeout(r, 500));
     fn();
     setActionLoading(null);
+    if (key === 'complete') toast.success('Token completed', 'Service recorded. Next token ready.');
+    if (key === 'hold')     toast.warning('Token on hold', 'Token placed on hold.');
+    if (key === 'noshow')   toast.info('No-show marked', 'Token marked as no-show.');
+    if (key === 'next')     toast.info('Next token called');
   };
 
   const statusStyle = {
@@ -61,7 +66,7 @@ export default function OfficerDashboardPage() {
       </div>
 
       {/* Stats row */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
         {[
           { label: 'Waiting',   value: queue.totalWaiting,   icon: <Users className="w-4 h-4" />,     color: 'text-amber-600' },
           { label: 'Serving',   value: queue.totalServing,    icon: <Hash className="w-4 h-4" />,      color: 'text-blue-600' },
@@ -103,7 +108,7 @@ export default function OfficerDashboardPage() {
                 </div>
 
                 {/* Action buttons */}
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   <button
                     onClick={() => doAction('complete', completeCurrentToken)}
                     disabled={actionLoading !== null}
@@ -159,16 +164,18 @@ export default function OfficerDashboardPage() {
               <h3 className="text-[14.5px] font-bold text-slate-900">Current Queue</h3>
               <span className="text-[12px] text-slate-400 font-medium">{queue.totalWaiting} waiting</span>
             </div>
-            <div className="grid grid-cols-12 text-[11.5px] font-semibold text-slate-400 uppercase tracking-wide px-2 py-2 border-b border-slate-100">
-              <div className="col-span-2">Token</div>
-              <div className="col-span-4">Citizen</div>
-              <div className="col-span-3">Service</div>
-              <div className="col-span-2">Wait</div>
-              <div className="col-span-1 text-right">Status</div>
-            </div>
-            <div className="divide-y divide-slate-50 mt-1">
-              {queue.tokens.slice(0, 10).map(t => (
-                <div key={t.tokenId} className={`grid grid-cols-12 items-center px-2 py-2.5 rounded-lg hover:bg-slate-50/60 transition-colors ${t.isCurrentUser ? 'bg-red-50/40' : ''}`}>
+            <div className="overflow-x-auto">
+              <div className="min-w-[560px]">
+                <div className="grid grid-cols-12 text-[11px] font-bold text-slate-400 uppercase tracking-wide px-2 py-2 border-b border-slate-100">
+                  <div className="col-span-2">Token</div>
+                  <div className="col-span-4">Citizen</div>
+                  <div className="col-span-3">Service</div>
+                  <div className="col-span-2">Wait</div>
+                  <div className="col-span-1 text-right">Status</div>
+                </div>
+                <div className="divide-y divide-slate-50 mt-1">
+                  {queue.tokens.slice(0, 10).map(t => (
+                <div key={t.tokenId} className={`grid grid-cols-12 min-w-[560px] items-center px-2 py-2.5 rounded-lg hover:bg-slate-50/60 transition-colors ${t.isCurrentUser ? 'bg-red-50/40' : ''}`}>
                   <div className={`col-span-2 font-black text-[13px] ${t.isCurrentUser ? 'text-red-600' : 'text-slate-900'}`}>{t.displayNumber}</div>
                   <div className="col-span-4 text-[12.5px] font-medium text-slate-700">{t.citizenName ?? '—'}</div>
                   <div className="col-span-3 text-[12px] text-slate-500">{t.serviceName ?? 'Passport Services'}</div>
@@ -181,13 +188,15 @@ export default function OfficerDashboardPage() {
                 </div>
               ))}
             </div>
+              </div>{/* min-w wrapper */}
+            </div>{/* overflow-x-auto */}
           </div>
         </div>
 
         {/* Right panel — next tokens + counters */}
         <div className="lg:col-span-5 flex flex-col gap-4">
           {/* Next up */}
-          <div className="bg-white/95 backdrop-blur-md rounded-[24px] border border-slate-100/90 shadow-[0_4px_24px_rgba(0,0,0,0.03)] p-5">
+          <div className="bg-white/95 backdrop-blur-md rounded-[24px] border border-slate-100/90 shadow-[0_4px_24px_rgba(0,0,0,0.03)] p-5 overflow-x-auto">
             <h3 className="text-[14.5px] font-bold text-slate-900 mb-3">Next in Queue</h3>
             <div className="space-y-2">
               {nextTokens.length === 0 ? (
@@ -211,7 +220,7 @@ export default function OfficerDashboardPage() {
           </div>
 
           {/* Counters overview */}
-          <div className="bg-white/95 backdrop-blur-md rounded-[24px] border border-slate-100/90 shadow-[0_4px_24px_rgba(0,0,0,0.03)] p-5">
+          <div className="bg-white/95 backdrop-blur-md rounded-[24px] border border-slate-100/90 shadow-[0_4px_24px_rgba(0,0,0,0.03)] p-5 overflow-x-auto">
             <h3 className="text-[14.5px] font-bold text-slate-900 mb-3">Counter Overview</h3>
             <div className="space-y-2">
               {counters.slice(0, 6).map(c => {
@@ -239,9 +248,9 @@ export default function OfficerDashboardPage() {
           </div>
 
           {/* Productivity */}
-          <div className="bg-white/95 backdrop-blur-md rounded-[24px] border border-slate-100/90 shadow-[0_4px_24px_rgba(0,0,0,0.03)] p-5">
+          <div className="bg-white/95 backdrop-blur-md rounded-[24px] border border-slate-100/90 shadow-[0_4px_24px_rgba(0,0,0,0.03)] p-5 overflow-x-auto">
             <h3 className="text-[14.5px] font-bold text-slate-900 mb-3">My Stats Today</h3>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {[
                 { label: 'Served', value: myCounter?.tokensServedToday ?? 22, icon: <CheckCircle2 className="w-4 h-4 text-emerald-500" /> },
                 { label: 'Avg time', value: `${avgMin}m ${avgSec}s`, icon: <Clock className="w-4 h-4 text-blue-500" /> },

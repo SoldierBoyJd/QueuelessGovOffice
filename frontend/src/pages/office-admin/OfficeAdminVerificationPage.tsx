@@ -30,7 +30,7 @@ export default function OfficeAdminVerificationPage() {
       </div>
 
       {/* Summary */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
           { label: 'Pending',      count: 1, color: 'text-slate-600' },
           { label: 'Under Review', count: 1, color: 'text-amber-600' },
@@ -45,8 +45,8 @@ export default function OfficeAdminVerificationPage() {
       </div>
 
       {/* Applications table */}
-      <div className="bg-white/95 backdrop-blur-md rounded-[24px] border border-slate-100/90 shadow-[0_4px_24px_rgba(0,0,0,0.03)] overflow-hidden">
-        <div className="grid grid-cols-12 px-5 py-3 border-b border-slate-100 text-[11.5px] font-semibold text-slate-400 uppercase tracking-wide">
+      <div className="bg-white/95 backdrop-blur-md rounded-[24px] border border-slate-100/90 shadow-[0_4px_24px_rgba(0,0,0,0.03)] overflow-x-auto">
+        <div className="grid grid-cols-12 min-w-[560px] px-5 py-3 border-b border-slate-100 text-[11.5px] font-semibold text-slate-400 uppercase tracking-wide">
           <div className="col-span-3">Applicant</div>
           <div className="col-span-2">Requested Role</div>
           <div className="col-span-3">Office</div>
@@ -57,8 +57,8 @@ export default function OfficeAdminVerificationPage() {
           {APPS.map(app => {
             const s = STATUS_STYLE[app.status] ?? STATUS_STYLE.PENDING;
             return (
-              <div key={app.id} onClick={() => navigate('/verification')}
-                className="grid grid-cols-12 items-center px-5 py-4 hover:bg-slate-50/50 transition-colors cursor-pointer group">
+              <div key={app.id} onClick={() => navigate(`/office-admin/verification/${app.id}`)}
+                className="grid grid-cols-12 min-w-[560px] items-center px-5 py-4 hover:bg-slate-50/50 transition-colors cursor-pointer group">
                 <div className="col-span-3 flex items-center gap-2.5">
                   <div className="w-8 h-8 rounded-full bg-slate-200 text-slate-600 text-[11px] font-black flex items-center justify-center flex-shrink-0">
                     {app.applicantName.split(' ').map(n => n[0]).join('')}

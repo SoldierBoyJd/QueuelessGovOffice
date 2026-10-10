@@ -27,7 +27,7 @@ export default function SuperAdminLayout() {
           { id: 'users',     label: 'Users',      icon: Users,           route: '/super-admin/users'     },
           { id: 'models',    label: 'AI Models',  icon: Brain,           route: '/super-admin/models'    },
           { id: 'audit',     label: 'Audit Logs', icon: ScrollText,      route: '/super-admin/audit'     },
-          { id: 'config',    label: 'Config',     icon: Settings,        route: '/super-admin/dashboard' },
+          { id: 'config',    label: 'Config',     icon: Settings,        route: '/super-admin/config'    },
         ],
       }]}
     />

@@ -1,4 +1,6 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuthStore } from '../stores/authStore';
 import type { Counter } from '../types';
 
 interface CounterStatusCardProps {
@@ -9,23 +11,38 @@ const STATUS_STYLE: Record<string, { dot: string; text: string; label: string }>
   ACTIVE:  { dot: 'bg-emerald-500', text: 'text-emerald-600', label: 'Active' },
   PAUSED:  { dot: 'bg-amber-500',   text: 'text-amber-600',   label: 'Paused' },
   CLOSED:  { dot: 'bg-slate-400',   text: 'text-slate-500',   label: 'Closed' },
-  BREAK:   { dot: 'bg-blue-400',    text: 'text-blue-500',    label: 'Break' },
+  BREAK:   { dot: 'bg-blue-400',    text: 'text-blue-500',    label: 'Break'  },
 };
 
 export const CounterStatusCard: React.FC<CounterStatusCardProps> = ({ counters }) => {
+  const navigate = useNavigate();
+  const { user } = useAuthStore();
   const display = (counters ?? []).slice(0, 4);
+
+  const viewAllRoute =
+    user?.role === 'OFFICER'      ? '/officer/counters' :
+    user?.role === 'OFFICE_ADMIN' ? '/office-admin/counters' :
+    '/citizen/home';
 
   return (
     <div className="w-full bg-white/95 backdrop-blur-md rounded-[24px] border border-slate-100/90 shadow-[0_4px_24px_rgba(0,0,0,0.03)] p-5">
       <div className="flex items-center justify-between pb-3.5">
         <h3 className="text-[14.5px] font-bold text-slate-900">Counter Status</h3>
-        <button className="text-[12px] font-semibold text-red-600 hover:text-red-700 transition-colors">View All</button>
+        <button
+          onClick={() => navigate(viewAllRoute)}
+          className="text-[12px] font-semibold text-red-600 hover:text-red-700 transition-colors"
+        >
+          View All
+        </button>
       </div>
       <div className="grid grid-cols-4 gap-2.5">
         {display.map((c) => {
           const s = STATUS_STYLE[c.status] ?? STATUS_STYLE.CLOSED;
           return (
-            <div key={c.id} className="bg-[#f8fafc] border border-slate-100/90 rounded-2xl p-2.5 flex flex-col justify-between min-h-[92px] hover:border-slate-200 transition-all">
+            <div key={c.id}
+              className="bg-[#f8fafc] border border-slate-100/90 rounded-2xl p-2.5 flex flex-col justify-between min-h-[92px] hover:border-slate-200 hover:shadow-sm transition-all cursor-pointer"
+              onClick={() => navigate(viewAllRoute)}
+            >
               <div>
                 <div className="text-[11px] font-medium text-slate-500">{c.name}</div>
                 <div className="flex items-center gap-1.5 mt-0.5">

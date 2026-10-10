@@ -29,11 +29,11 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f4f6fa] flex items-center justify-center p-4 relative overflow-hidden">
+    <div className="min-h-screen bg-[#f4f6fa] flex items-center justify-center p-3 sm:p-4 relative overflow-hidden">
       <SilkBackground />
       <div className="w-full max-w-[440px] relative z-10">
         <div className="flex justify-center mb-8"><Logo /></div>
-        <div className="liquid-glass-card rounded-[28px] p-8">
+        <div className="liquid-glass-card rounded-[24px] sm:rounded-[28px] p-5 sm:p-8">
           <h1 className="text-[22px] font-black text-slate-900 tracking-tight mb-1">Create account</h1>
           <p className="text-[13px] text-slate-500 mb-6">Citizens can register directly. Government roles require verification.</p>
 

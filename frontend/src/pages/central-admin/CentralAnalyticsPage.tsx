@@ -33,7 +33,7 @@ export default function CentralAnalyticsPage() {
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
         {[
           { label: 'Tokens Today',      value: '62,481', delta: '+8.2%',  up: true  },
           { label: 'Avg National Wait', value: '31 min', delta: '+2.4m',  up: false },

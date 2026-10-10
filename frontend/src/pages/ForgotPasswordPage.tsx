@@ -18,11 +18,11 @@ export default function ForgotPasswordPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f4f6fa] flex items-center justify-center p-4 relative overflow-hidden">
+    <div className="min-h-screen bg-[#f4f6fa] flex items-center justify-center p-3 sm:p-4 relative overflow-hidden">
       <SilkBackground />
       <div className="w-full max-w-[400px] relative z-10">
         <div className="flex justify-center mb-8"><Logo /></div>
-        <div className="liquid-glass-card rounded-[28px] p-8">
+        <div className="liquid-glass-card rounded-[24px] sm:rounded-[28px] p-5 sm:p-8">
           {sent ? (
             <div className="text-center py-4">
               <div className="w-12 h-12 rounded-full bg-emerald-50 border border-emerald-200 flex items-center justify-center mx-auto mb-4">

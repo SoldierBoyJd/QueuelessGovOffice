@@ -8,7 +8,10 @@ export default function OfficerLayout() {
   const location = useLocation();
 
   const titleMap: Record<string, { title: string; sub: string }> = {
-    '/officer/dashboard': { title: 'Officer Dashboard', sub: 'Rajkot District Office · Counter 01' },
+    '/officer/dashboard': { title: 'Officer Dashboard',  sub: `Counter 01 · Rajkot District Office` },
+    '/officer/queue':     { title: 'Live Queue',          sub: 'Rajkot District Office · Passport Services' },
+    '/officer/counters':  { title: 'Counter Overview',    sub: 'Rajkot District Office · All counters' },
+    '/officer/officers':  { title: 'Officers On Duty',    sub: 'Rajkot District Office' },
   };
   const current = Object.entries(titleMap).find(([k]) => location.pathname.startsWith(k))?.[1];
 
@@ -20,10 +23,10 @@ export default function OfficerLayout() {
       pageSubtitle={current?.sub ?? `Signed in as ${user?.name ?? 'Officer'}`}
       sections={[{
         items: [
-          { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, route: '/officer/dashboard' },
-          { id: 'queue',     label: 'Live Queue', icon: ListOrdered,    route: '/officer/dashboard' },
-          { id: 'counters',  label: 'Counters',   icon: MonitorCheck,   route: '/officer/dashboard' },
-          { id: 'officers',  label: 'Officers',   icon: Users,          route: '/officer/dashboard' },
+          { id: 'dashboard', label: 'Dashboard',  icon: LayoutDashboard, route: '/officer/dashboard' },
+          { id: 'queue',     label: 'Live Queue', icon: ListOrdered,     route: '/officer/queue'     },
+          { id: 'counters',  label: 'Counters',   icon: MonitorCheck,    route: '/officer/counters'  },
+          { id: 'officers',  label: 'Officers',   icon: Users,           route: '/officer/officers'  },
         ],
       }]}
     />

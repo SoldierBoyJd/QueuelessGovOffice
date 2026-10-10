@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Search, MapPin } from 'lucide-react';
 import { MOCK_OFFICE_SUMMARIES } from '../../mock/data';
 import type { CongestionLevel } from '../../types';
@@ -10,6 +11,7 @@ const CONG_STYLE: Record<CongestionLevel, string> = {
 };
 
 export default function CentralOfficesPage() {
+  const navigate = useNavigate();
   const [query, setQuery] = useState('');
   const [filterCong, setFilterCong] = useState<CongestionLevel | 'ALL'>('ALL');
 
@@ -29,7 +31,7 @@ export default function CentralOfficesPage() {
 
       {/* Filters */}
       <div className="flex items-center gap-3 flex-wrap">
-        <div className="liquid-glass-search rounded-xl px-3.5 py-2 flex items-center gap-2.5 flex-1 min-w-[240px]">
+        <div className="liquid-glass-search rounded-xl px-3.5 py-2 flex items-center gap-2.5 flex-1 min-w-[560px]">
           <Search className="w-4 h-4 text-slate-400 flex-shrink-0" />
           <input value={query} onChange={e => setQuery(e.target.value)} placeholder="Search offices, cities, states…"
             className="w-full bg-transparent text-[13px] text-slate-800 placeholder-slate-400 outline-none font-medium" />
@@ -47,8 +49,8 @@ export default function CentralOfficesPage() {
       <p className="text-[12.5px] text-slate-400 -mt-2">{filtered.length} offices</p>
 
       {/* Table */}
-      <div className="bg-white/95 backdrop-blur-md rounded-[24px] border border-slate-100/90 shadow-[0_4px_24px_rgba(0,0,0,0.03)] overflow-hidden">
-        <div className="grid grid-cols-12 px-5 py-3 border-b border-slate-100 text-[11.5px] font-semibold text-slate-400 uppercase tracking-wide">
+      <div className="bg-white/95 backdrop-blur-md rounded-[24px] border border-slate-100/90 shadow-[0_4px_24px_rgba(0,0,0,0.03)] overflow-x-auto">
+        <div className="grid grid-cols-12 min-w-[560px] px-5 py-3 border-b border-slate-100 text-[11.5px] font-semibold text-slate-400 uppercase tracking-wide">
           <div className="col-span-4">Office</div>
           <div className="col-span-2 text-right">Waiting</div>
           <div className="col-span-2 text-right">Avg Wait</div>
@@ -57,7 +59,10 @@ export default function CentralOfficesPage() {
         </div>
         <div className="divide-y divide-slate-50">
           {filtered.map(o => (
-            <div key={o.id} className="grid grid-cols-12 items-center px-5 py-3.5 hover:bg-slate-50/50 transition-colors cursor-pointer group">
+            <div key={o.id}
+              className="grid grid-cols-12 min-w-[560px] items-center px-5 py-3.5 hover:bg-slate-50/50 transition-colors cursor-pointer group"
+              onClick={() => navigate('/central/map')}
+            >
               <div className="col-span-4 flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-center flex-shrink-0">
                   <MapPin className="w-4 h-4 text-slate-400" />
