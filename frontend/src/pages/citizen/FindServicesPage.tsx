@@ -1,8 +1,12 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, MapPin, Users, Clock, ChevronRight, Wifi, WifiOff } from 'lucide-react';
-import { MOCK_OFFICES } from '../../mock/data';
 import type { CongestionLevel } from '../../types';
+import { useQuery } from '@tanstack/react-query';
+import { officesApi } from '../../services/api/offices';
+import { LoadingState } from '../../components/ui/LoadingState';
+import { ErrorState } from '../../components/ui/ErrorState';
+import { parseApiError } from '../../services/api/client';
 
 const CONGESTION: Record<CongestionLevel, { label: string; dot: string; text: string; bg: string }> = {
   NORMAL: { label: 'Normal',      dot: 'bg-emerald-500', text: 'text-emerald-600', bg: 'bg-emerald-50 border-emerald-200/60' },
@@ -13,8 +17,13 @@ const CONGESTION: Record<CongestionLevel, { label: string; dot: string; text: st
 export default function FindServicesPage() {
   const navigate = useNavigate();
   const [query, setQuery] = useState('');
+  const { data: offices = [], isLoading, error, refetch } = useQuery({
+    queryKey: ['offices', 'with-services'],
+    queryFn: officesApi.listWithServices,
+    refetchInterval: 30_000,
+  });
 
-  const filtered = MOCK_OFFICES.filter(o =>
+  const filtered = offices.filter(o =>
     o.name.toLowerCase().includes(query.toLowerCase()) ||
     o.city.toLowerCase().includes(query.toLowerCase()) ||
     o.departments.some(d => d.services.some(s => s.name.toLowerCase().includes(query.toLowerCase())))
@@ -35,6 +44,9 @@ export default function FindServicesPage() {
         <h2 className="text-[18px] font-black text-slate-900 tracking-tight">Find a Government Service</h2>
         <p className="text-[13px] text-slate-500 mt-0.5">{filtered.length} offices available · Showing live queue conditions</p>
       </div>
+
+      {isLoading && <LoadingState message="Loading offices…" />}
+      {error && <ErrorState message={parseApiError(error).message} onRetry={() => void refetch()} />}
 
       {/* Office Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

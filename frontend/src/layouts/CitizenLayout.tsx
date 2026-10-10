@@ -11,7 +11,7 @@ import { HeaderGreeting } from '../components/HeaderGreeting';
 import { SilkBackground } from '../components/SilkBackground';
 import { SilkRibbonWave } from '../components/SilkRibbonWave';
 import { useAuthStore } from '../stores/authStore';
-import { useDemoStore } from '../stores/demoStore';
+import { useLiveStore } from '../stores/liveStore';
 import { ConnectionStatus } from '../components/ConnectionStatus';
 
 const NAV_ROUTES: Record<string, string> = {
@@ -67,7 +67,7 @@ export default function CitizenLayout() {
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuthStore();
-  const { notifications, wsStatus } = useDemoStore();
+  const { notifications, wsStatus, lastSyncedAt } = useLiveStore();
   const unread = notifications.filter(n => !n.read).length;
 
   const [activeTab, setActiveTab] = useState(resolveTab(location.pathname));
@@ -147,7 +147,7 @@ export default function CitizenLayout() {
       {/* Bottom — connection + emblem */}
       <div className="flex-shrink-0 pt-4 pb-1 border-t border-slate-200/50 flex flex-col items-center text-center">
         <div className="mb-2">
-          <ConnectionStatus status={wsStatus} lastUpdated={notifications[0]?.timestamp} />
+          <ConnectionStatus status={wsStatus} lastUpdated={lastSyncedAt ?? undefined} />
         </div>
         <IndiaEmblem className="w-16 h-20 mb-1 opacity-90" />
         <p className="text-[11px] font-semibold text-slate-500 leading-snug max-w-[175px]">

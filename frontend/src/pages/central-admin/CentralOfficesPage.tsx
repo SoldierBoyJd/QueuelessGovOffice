@@ -1,8 +1,11 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, MapPin } from 'lucide-react';
-import { MOCK_OFFICE_SUMMARIES } from '../../mock/data';
 import type { CongestionLevel } from '../../types';
+import { useCentralData } from '../../hooks/useCentralData';
+import { LoadingState } from '../../components/ui/LoadingState';
+import { ErrorState } from '../../components/ui/ErrorState';
+import { parseApiError } from '../../services/api/client';
 
 const CONG_STYLE: Record<CongestionLevel, string> = {
   NORMAL: 'bg-emerald-50 border-emerald-200/80 text-emerald-700',
@@ -12,15 +15,19 @@ const CONG_STYLE: Record<CongestionLevel, string> = {
 
 export default function CentralOfficesPage() {
   const navigate = useNavigate();
+  const { offices, isLoading, error, refetch } = useCentralData();
   const [query, setQuery] = useState('');
   const [filterCong, setFilterCong] = useState<CongestionLevel | 'ALL'>('ALL');
 
-  const filtered = MOCK_OFFICE_SUMMARIES.filter(o => {
+  const filtered = offices.filter(o => {
     const q = query.toLowerCase();
     const matchQ = !q || o.name.toLowerCase().includes(q) || o.city.toLowerCase().includes(q) || o.state.toLowerCase().includes(q);
     const matchC = filterCong === 'ALL' || o.congestion === filterCong;
     return matchQ && matchC;
   });
+
+  if (isLoading) return <LoadingState message="Loading network data…" />;
+  if (error) return <ErrorState message={parseApiError(error).message} onRetry={refetch} />;
 
   return (
     <div className="flex flex-col gap-5">

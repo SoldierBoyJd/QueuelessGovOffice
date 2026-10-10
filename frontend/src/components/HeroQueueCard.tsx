@@ -18,19 +18,19 @@ const STATUS_BADGE: Record<string, { bg: string; dot: string; text: string; labe
 
 export const HeroQueueCard: React.FC<HeroQueueCardProps> = ({ token, queue }) => {
   const navigate = useNavigate();
-  const displayNum  = token?.displayNumber   ?? 'A-184';
+  const displayNum  = token?.displayNumber   ?? '—';
   const status      = token?.status          ?? 'WAITING';
-  const serviceName = token?.serviceName     ?? 'Passport Services';
-  const officeName  = token?.officeName      ?? 'Rajkot District Office';
-  const peopleAhead = token?.peopleAhead     ?? 11;
-  const waitMin     = token?.prediction?.estimatedWaitMinutes ?? 42;
-  const turnTime    = token?.prediction?.estimatedTurnTime   ?? '2:42 PM';
-  const arrivalTime = token?.prediction?.recommendedArrival  ?? '2:27 PM';
-  const confidence  = token?.prediction?.confidence          ?? 92;
-  const lowerBound  = token?.prediction?.lowerBoundMinutes   ?? 35;
-  const upperBound  = token?.prediction?.upperBoundMinutes   ?? 51;
-  const totalQueue  = queue?.totalWaiting    ?? 31;
-  const activeCount = queue?.activeCounters  ?? 4;
+  const serviceName = token?.serviceName     ?? '—';
+  const officeName  = token?.officeName      ?? '—';
+  const peopleAhead = token?.peopleAhead     ?? 0;
+  const waitMin     = token?.prediction?.estimatedWaitMinutes ?? 0;
+  const turnTime    = token?.prediction?.estimatedTurnTime   ?? '—';
+  const arrivalTime = token?.prediction?.recommendedArrival  ?? '—';
+  const confidence  = token?.prediction?.confidence          ?? 0;
+  const lowerBound  = token?.prediction?.lowerBoundMinutes   ?? 0;
+  const upperBound  = token?.prediction?.upperBoundMinutes   ?? 0;
+  const totalQueue  = queue?.totalWaiting    ?? 0;
+  const activeCount = queue?.activeCounters  ?? 0;
 
   const badge = STATUS_BADGE[status] ?? STATUS_BADGE.WAITING;
 
@@ -76,7 +76,7 @@ export const HeroQueueCard: React.FC<HeroQueueCardProps> = ({ token, queue }) =>
               Arrive around {arrivalTime}
               <Info className="w-3.5 h-3.5 text-slate-400 inline" />
             </span>
-            <span className="text-slate-400 text-[12px]">Likely between {lowerTime} – {upperTime}</span>
+            {upperBound > 0 && <span className="text-slate-400 text-[12px]">Likely between {lowerTime} – {upperTime}</span>}
           </div>
         </div>
       </div>
@@ -85,9 +85,9 @@ export const HeroQueueCard: React.FC<HeroQueueCardProps> = ({ token, queue }) =>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 py-6 border-b border-slate-100">
         {[
           { value: peopleAhead, label: 'People ahead of you' },
-          { value: totalQueue,  label: 'Total in queue for this service' },
+          { value: totalQueue,  label: 'Total waiting at this office' },
           { value: activeCount, label: 'Active counters' },
-          { value: `${confidence}%`, label: 'Prediction confidence', info: true },
+          { value: confidence > 0 ? `${confidence}%` : '—', label: 'Prediction confidence', info: true },
         ].map((m, i) => (
           <div key={i}>
             <div className="text-[28px] font-black text-slate-900 tracking-tight leading-none">{m.value}</div>
@@ -133,7 +133,7 @@ export const HeroQueueCard: React.FC<HeroQueueCardProps> = ({ token, queue }) =>
             <div className="mt-2.5 text-right">
               <div className="text-[11.5px] font-extrabold text-slate-900 uppercase tracking-wider">SERVICE</div>
               <div className="text-[12px] text-slate-500 font-normal">At counter</div>
-              <div className="text-[11px] text-slate-400 font-medium">(~{waitMin > 0 ? `${Math.round(waitMin / 5) * 5}` : '5'}–{Math.round(waitMin / 5) * 5 + 2} min)</div>
+              {waitMin > 0 && <div className="text-[11px] text-slate-400 font-medium">(~{Math.max(1, Math.round(waitMin))} min from now)</div>}
             </div>
           </div>
         </div>

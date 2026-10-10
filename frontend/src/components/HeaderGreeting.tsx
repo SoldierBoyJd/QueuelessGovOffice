@@ -8,7 +8,7 @@ interface HeaderGreetingProps {
 }
 
 export const HeaderGreeting: React.FC<HeaderGreetingProps> = ({
-  userName = 'Jainam',
+  userName = 'there',
   greeting,
 }) => {
   const [now, setNow] = useState(new Date());

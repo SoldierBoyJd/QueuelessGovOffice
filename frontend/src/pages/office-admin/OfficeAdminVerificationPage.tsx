@@ -1,12 +1,12 @@
 import { useNavigate } from 'react-router-dom';
 import { Clock, ChevronRight } from 'lucide-react';
-import { MOCK_VERIFICATION } from '../../mock/data';
-
-const APPS = [
-  { ...MOCK_VERIFICATION, id: 'vapp-001' },
-  { ...MOCK_VERIFICATION, id: 'vapp-002', applicantName: 'Sneha Kapoor', requestedRole: 'OFFICER' as const, status: 'PENDING' as const, submittedAt: '2026-09-28T14:00:00Z' },
-  { ...MOCK_VERIFICATION, id: 'vapp-003', applicantName: 'Arun Mishra',  requestedRole: 'OFFICER' as const, status: 'APPROVED' as const, submittedAt: '2026-09-27T10:00:00Z' },
-];
+import { useQuery } from '@tanstack/react-query';
+import { verificationApi } from '../../services/api/verification';
+import { LoadingState } from '../../components/ui/LoadingState';
+import { ErrorState } from '../../components/ui/ErrorState';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { parseApiError } from '../../services/api/client';
+import { useAuthStore } from '../../stores/authStore';
 
 const STATUS_STYLE: Record<string, { pill: string; label: string }> = {
   PENDING:            { pill: 'bg-slate-50 border-slate-200/80 text-slate-500',     label: 'Pending'        },
@@ -22,6 +22,18 @@ function fmt(ts: string) {
 
 export default function OfficeAdminVerificationPage() {
   const navigate = useNavigate();
+  const role = useAuthStore(st => st.user?.role);
+  const base = role === 'SUPER_ADMIN' ? '/verification' : '/office-admin/verification';
+  const { data: APPS = [], isLoading, error, refetch } = useQuery({
+    queryKey: ['verification', 'list'],
+    queryFn: () => verificationApi.list(),
+    refetchInterval: 30_000,
+  });
+  const count = (st: string) => APPS.filter(a => a.status === st).length;
+
+  if (isLoading) return <LoadingState message="Loading applications…" />;
+  if (error) return <ErrorState message={parseApiError(error).message} onRetry={() => void refetch()} />;
+
   return (
     <div className="flex flex-col gap-5">
       <div>
@@ -32,10 +44,10 @@ export default function OfficeAdminVerificationPage() {
       {/* Summary */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: 'Pending',      count: 1, color: 'text-slate-600' },
-          { label: 'Under Review', count: 1, color: 'text-amber-600' },
-          { label: 'Approved',     count: 1, color: 'text-emerald-600' },
-          { label: 'Rejected',     count: 0, color: 'text-red-600' },
+          { label: 'Pending',      count: count('PENDING'), color: 'text-slate-600' },
+          { label: 'Under Review', count: count('UNDER_REVIEW'), color: 'text-amber-600' },
+          { label: 'Approved',     count: count('APPROVED'), color: 'text-emerald-600' },
+          { label: 'Rejected',     count: count('REJECTED'), color: 'text-red-600' },
         ].map(s => (
           <div key={s.label} className="bg-white/95 backdrop-blur-md rounded-[20px] border border-slate-100/90 shadow-[0_4px_24px_rgba(0,0,0,0.03)] p-4">
             <div className={`text-[24px] font-black ${s.color}`}>{s.count}</div>
@@ -53,11 +65,12 @@ export default function OfficeAdminVerificationPage() {
           <div className="col-span-2">Submitted</div>
           <div className="col-span-2 text-right">Status</div>
         </div>
+        {APPS.length === 0 && <EmptyState compact title="No applications" description="Staff onboarding requests will appear here." />}
         <div className="divide-y divide-slate-100">
           {APPS.map(app => {
             const s = STATUS_STYLE[app.status] ?? STATUS_STYLE.PENDING;
             return (
-              <div key={app.id} onClick={() => navigate(`/office-admin/verification/${app.id}`)}
+              <div key={app.id} onClick={() => navigate(`${base}/${app.id}`)}
                 className="grid grid-cols-12 min-w-[560px] items-center px-5 py-4 hover:bg-slate-50/50 transition-colors cursor-pointer group">
                 <div className="col-span-3 flex items-center gap-2.5">
                   <div className="w-8 h-8 rounded-full bg-slate-200 text-slate-600 text-[11px] font-black flex items-center justify-center flex-shrink-0">

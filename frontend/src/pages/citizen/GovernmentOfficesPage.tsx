@@ -1,8 +1,12 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, MapPin, Clock, Users, ChevronRight, Wifi, WifiOff, Building2 } from 'lucide-react';
-import { MOCK_OFFICES } from '../../mock/data';
 import type { CongestionLevel } from '../../types';
+import { useQuery } from '@tanstack/react-query';
+import { officesApi } from '../../services/api/offices';
+import { LoadingState } from '../../components/ui/LoadingState';
+import { ErrorState } from '../../components/ui/ErrorState';
+import { parseApiError } from '../../services/api/client';
 
 const CONG: Record<CongestionLevel, { label: string; dot: string; text: string; bg: string }> = {
   NORMAL: { label: 'Normal',      dot: 'bg-emerald-500', text: 'text-emerald-600', bg: 'bg-emerald-50 border-emerald-200/60' },
@@ -15,9 +19,15 @@ export default function GovernmentOfficesPage() {
   const [query, setQuery] = useState('');
   const [stateFilter, setStateFilter] = useState('All');
 
-  const states = ['All', ...Array.from(new Set(MOCK_OFFICES.map(o => o.state)))];
+  const { data: offices = [], isLoading, error, refetch } = useQuery({
+    queryKey: ['offices', 'with-services'],
+    queryFn: officesApi.listWithServices,
+    refetchInterval: 30_000,
+  });
 
-  const filtered = MOCK_OFFICES.filter(o => {
+  const states = ['All', ...Array.from(new Set(offices.map(o => o.state).filter(Boolean)))];
+
+  const filtered = offices.filter(o => {
     const q = query.toLowerCase();
     const matchQ = !q || o.name.toLowerCase().includes(q) || o.city.toLowerCase().includes(q) || o.state.toLowerCase().includes(q);
     const matchS = stateFilter === 'All' || o.state === stateFilter;
@@ -55,6 +65,9 @@ export default function GovernmentOfficesPage() {
           ))}
         </div>
       </div>
+
+      {isLoading && <LoadingState message="Loading offices…" />}
+      {error && <ErrorState message={parseApiError(error).message} onRetry={() => void refetch()} />}
 
       <p className="text-[12.5px] text-slate-400 -mt-2">{filtered.length} office{filtered.length !== 1 ? 's' : ''} found</p>
 

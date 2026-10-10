@@ -1,5 +1,7 @@
-import { useDemoStore } from '../../stores/demoStore';
+import { useLiveStore } from '../../stores/liveStore';
 import { CheckCircle2, TrendingUp } from 'lucide-react';
+import { useMyOffice } from '../../hooks/useMyOffice';
+import { useAuthStore } from '../../stores/authStore';
 
 const STATUS_STYLE: Record<string, { dot: string; pill: string; label: string }> = {
   ACTIVE:  { dot: 'bg-emerald-500', pill: 'bg-emerald-50 border-emerald-200/80 text-emerald-700', label: 'Active'  },
@@ -9,14 +11,16 @@ const STATUS_STYLE: Record<string, { dot: string; pill: string; label: string }>
 };
 
 export default function OfficerCountersPage() {
-  const { counters } = useDemoStore();
+  const { counters } = useLiveStore();
+  const { data: office } = useMyOffice();
+  const myCounterId = useAuthStore(st => st.user?.counterId);
 
   return (
     <div className="flex flex-col gap-4">
       <div>
         <h1 className="text-[22px] font-black text-slate-900 tracking-tight">Counter Overview</h1>
         <p className="text-[13px] text-slate-500 mt-0.5">
-          Rajkot District Office · {counters.filter(c => c.status === 'ACTIVE').length}/{counters.length} counters active
+          {office?.name ?? ''} · {counters.filter(c => c.status === 'ACTIVE').length}/{counters.length} counters active
         </p>
       </div>
 
@@ -53,13 +57,14 @@ export default function OfficerCountersPage() {
             <tbody className="divide-y divide-slate-50">
               {counters.map(c => {
                 const s = STATUS_STYLE[c.status] ?? STATUS_STYLE.CLOSED;
-                const isMe = c.id === 'ctr-001';
+                const isMe = c.id === myCounterId;
                 const avgMin = Math.floor((c.avgServiceSeconds ?? 0) / 60);
                 const avgSec = (c.avgServiceSeconds ?? 0) % 60;
                 return (
                   <tr key={c.id} className={`hover:bg-slate-50/50 transition-colors ${isMe ? 'bg-red-50/20' : ''}`}>
                     <td className="px-5 py-3.5">
                       <span className="font-black text-[13.5px] text-slate-900">{c.name}</span>
+                      <span className="text-[11px] font-semibold text-slate-400"> · {c.serviceName ?? 'All services'}</span>
                       {isMe && <span className="ml-2 text-[10px] font-bold text-red-500 bg-red-100 px-1.5 py-0.5 rounded-full">YOU</span>}
                     </td>
                     <td className="px-3 py-3.5 text-[12.5px] font-medium text-slate-700">{c.officerName ?? 'Unassigned'}</td>
@@ -89,12 +94,13 @@ export default function OfficerCountersPage() {
       <div className="md:hidden space-y-2">
         {counters.map(c => {
           const s = STATUS_STYLE[c.status] ?? STATUS_STYLE.CLOSED;
-          const isMe = c.id === 'ctr-001';
+          const isMe = c.id === myCounterId;
           return (
             <div key={c.id} className={`bg-white/95 backdrop-blur-md rounded-[20px] border border-slate-100/90 shadow-[0_2px_12px_rgba(0,0,0,0.03)] p-4 ${isMe ? 'border-l-4 border-l-red-500' : ''}`}>
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
                   <span className="font-black text-[15px] text-slate-900">{c.name}</span>
+                  <span className="text-[11px] font-semibold text-slate-400"> · {c.serviceName ?? 'All services'}</span>
                   {isMe && <span className="text-[10px] font-bold text-red-500 bg-red-100 px-1.5 py-0.5 rounded-full">YOU</span>}
                 </div>
                 <span className={`px-2.5 py-1 rounded-full border text-[11px] font-bold inline-flex items-center gap-1 ${s.pill}`}>
@@ -120,7 +126,7 @@ export default function OfficerCountersPage() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {counters.filter(c => c.tokensServedToday > 0).map(c => (
             <div key={c.id} className="bg-slate-50/80 rounded-2xl p-3.5">
-              <div className="text-[11.5px] text-slate-400 font-semibold mb-1">{c.name}</div>
+              <div className="text-[11.5px] text-slate-400 font-semibold mb-1">{c.name} · {c.serviceName ?? 'All services'}</div>
               <div className="flex items-center gap-2">
                 <CheckCircle2 className="w-4 h-4 text-emerald-500" />
                 <span className="text-[18px] font-black text-slate-900">{c.tokensServedToday}</span>

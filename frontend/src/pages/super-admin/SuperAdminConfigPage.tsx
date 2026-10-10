@@ -108,7 +108,9 @@ export default function SuperAdminConfigPage() {
           )}
           <button
             onClick={handleSave}
-            disabled={saving}
+            disabled
+            title="Platform settings are managed through server environment variables"
+
             className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-[13px] transition-colors shadow-[0_2px_8px_rgba(220,38,38,0.2)] disabled:opacity-60"
           >
             <Settings className={`w-4 h-4 ${saving ? 'animate-spin' : ''}`} />
@@ -121,7 +123,7 @@ export default function SuperAdminConfigPage() {
       <div className="flex items-start gap-3 px-4 py-3.5 rounded-2xl bg-amber-50 border border-amber-200/80">
         <AlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
         <p className="text-[12.5px] text-amber-800">
-          <strong>Changes take effect immediately.</strong> Modifying API endpoints, security settings, or notification providers may impact live services. Test in a staging environment first.
+          <strong>Read-only preview.</strong> The backend has no settings API yet — platform behaviour is configured through its environment variables (see <code>backend/.env</code>). Nothing on this page is saved.
         </p>
       </div>
 

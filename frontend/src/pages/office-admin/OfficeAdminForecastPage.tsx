@@ -1,26 +1,51 @@
 import { AlertTriangle, TrendingUp, Info } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Legend } from 'recharts';
-import { MOCK_FORECAST } from '../../mock/data';
+import { useQuery } from '@tanstack/react-query';
+import { analyticsApi } from '../../services/api/analytics';
+import { useMyOffice } from '../../hooks/useMyOffice';
+import { LoadingState } from '../../components/ui/LoadingState';
 
 export default function OfficeAdminForecastPage() {
-  const forecast = MOCK_FORECAST;
+  const { data: forecast, isLoading } = useQuery({ queryKey: ['analytics', 'forecast'], queryFn: () => analyticsApi.forecast(), refetchInterval: 300_000 });
+  const { data: office } = useMyOffice();
   const ttStyle = { background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, fontSize: 12 };
+
+  if (isLoading || !forecast) return <LoadingState />;
+
+  if (!forecast.available) {
+    return (
+      <div className="flex flex-col gap-5">
+        <div>
+          <h1 className="text-[22px] font-black text-slate-900 tracking-tight">Congestion Forecast</h1>
+          <p className="text-[13px] text-slate-500 mt-0.5">{office?.name ?? ''} · Forecast for today</p>
+        </div>
+        <div className="flex items-start gap-3 px-5 py-4 rounded-2xl bg-slate-50 border border-slate-200/80">
+          <Info className="w-4 h-4 text-slate-400 flex-shrink-0 mt-0.5" />
+          <p className="text-[13px] text-slate-600">{forecast.reason ?? 'There is not enough history to forecast demand yet.'}</p>
+        </div>
+      </div>
+    );
+  }
+
+  const congested = forecast.congestionWindow !== '—';
+  const firstCongested = forecast.hourlyForecast.find(h => h.isCongested);
+  const peak = Math.max(10, ...forecast.hourlyForecast.map(h => h.upper));
 
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <h1 className="text-[22px] font-black text-slate-900 tracking-tight">AI Congestion Forecast</h1>
-        <p className="text-[13px] text-slate-500 mt-0.5">Rajkot District Office · Forecast for today</p>
+        <h1 className="text-[22px] font-black text-slate-900 tracking-tight">Congestion Forecast</h1>
+        <p className="text-[13px] text-slate-500 mt-0.5">{office?.name ?? ''} · Forecast for today</p>
       </div>
 
       {/* Alert banner */}
-      <div className="flex items-start gap-4 px-5 py-4 rounded-2xl bg-amber-50 border border-amber-300/60 shadow-[0_2px_12px_rgba(0,0,0,0.03)]">
+      <div className={`flex items-start gap-4 px-5 py-4 rounded-2xl border shadow-[0_2px_12px_rgba(0,0,0,0.03)] ${congested ? 'bg-amber-50 border-amber-300/60' : 'bg-emerald-50 border-emerald-300/60'}`}>
         <div className="w-9 h-9 rounded-xl bg-amber-100 border border-amber-200/80 flex items-center justify-center flex-shrink-0">
           <AlertTriangle className="w-4.5 h-4.5 text-amber-600" />
         </div>
         <div>
-          <div className="text-[14px] font-black text-amber-900">Congestion predicted: {forecast.congestionWindow}</div>
-          <div className="text-[12.5px] text-amber-700 mt-0.5">Expected queue size: <strong>{forecast.expectedRange}</strong> tokens · Peak at <strong>{forecast.peakHour}</strong></div>
+          <div className="text-[14px] font-black text-slate-900">{congested ? `Congestion predicted: ${forecast.congestionWindow}` : 'No congestion predicted'}</div>
+          <div className="text-[12.5px] text-slate-600 mt-0.5">Peak: <strong>{forecast.expectedRange}</strong> · Peak hour <strong>{forecast.peakHour}</strong></div>
         </div>
       </div>
 
@@ -34,10 +59,10 @@ export default function OfficeAdminForecastPage() {
                 <div className="w-4 h-4 rounded flex items-center justify-center bg-slate-100">
                   <span className="text-[8px] font-black">AI</span>
                 </div>
-                Powered by {forecast.officeId ? 'queue-xgb-v1' : 'AI model'}
+                Method: historical average
               </div>
             </div>
-            <p className="text-[12px] text-slate-400 mb-4">Expected number of tokens in queue per hour. Red band = predicted congestion window.</p>
+            <p className="text-[12px] text-slate-400 mb-4">Expected tokens created per hour, averaged over the same weekday in previous weeks. The shaded band shows the observed min–max.</p>
             <ResponsiveContainer width="100%" height={260}>
               <AreaChart data={forecast.hourlyForecast} margin={{ top: 5, right: 10, left: -20, bottom: 0 }}>
                 <defs>
@@ -52,10 +77,10 @@ export default function OfficeAdminForecastPage() {
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                 <XAxis dataKey="hour" tick={{ fontSize: 11, fill: '#94a3b8' }} tickLine={false} axisLine={false} />
-                <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} tickLine={false} axisLine={false} domain={[0, 100]} />
+                <YAxis tick={{ fontSize: 11, fill: '#94a3b8' }} tickLine={false} axisLine={false} domain={[0, peak]} />
                 <Tooltip contentStyle={ttStyle} formatter={(v: unknown, n: unknown) => [`${v as number} tokens`, n as string]} />
                 <Legend wrapperStyle={{ fontSize: 11, marginTop: 8 }} />
-                <ReferenceLine x="2 PM" stroke="#e11d48" strokeDasharray="4 3" label={{ value: 'Peak start', fontSize: 10, fill: '#e11d48' }} />
+                {firstCongested && <ReferenceLine x={firstCongested.hour} stroke="#e11d48" strokeDasharray="4 3" label={{ value: 'Capacity exceeded', fontSize: 10, fill: '#e11d48' }} />}
                 <Area type="monotone" dataKey="upper"    name="Upper bound" stroke="none" fill="url(#fBand)" legendType="none" />
                 <Area type="monotone" dataKey="expected" name="Expected"    stroke="#e11d48" strokeWidth={2.5} fill="url(#fGrad)" />
                 <Area type="monotone" dataKey="lower"    name="Lower bound" stroke="none" fill="none" legendType="none" />
@@ -91,19 +116,13 @@ export default function OfficeAdminForecastPage() {
 
         {/* Right panel */}
         <div className="lg:col-span-4 flex flex-col gap-5">
-          {/* Reasons */}
+          {/* Basis */}
           <div className="bg-white/95 backdrop-blur-md rounded-[24px] border border-slate-100/90 shadow-[0_4px_24px_rgba(0,0,0,0.03)] p-5 overflow-x-auto">
-            <h3 className="text-[14.5px] font-bold text-slate-900 mb-3">Forecast Reasons</h3>
-            <ul className="space-y-2.5">
-              {forecast.reasons.map((r, i) => (
-                <li key={i} className="flex items-start gap-2.5">
-                  <div className="w-5 h-5 rounded-full bg-amber-50 border border-amber-200/80 flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <span className="text-[10px] font-black text-amber-600">{i + 1}</span>
-                  </div>
-                  <span className="text-[12.5px] text-slate-700">{r}</span>
-                </li>
-              ))}
-            </ul>
+            <h3 className="text-[14.5px] font-bold text-slate-900 mb-3">Forecast Basis</h3>
+            <p className="text-[12.5px] text-slate-700 leading-relaxed">
+              Average demand over the same weekday in previous weeks, compared with current counter capacity
+              ({forecast.capacityPerHour ?? '—'} tokens/hour).
+            </p>
           </div>
 
           {/* Recommendation */}
@@ -119,7 +138,7 @@ export default function OfficeAdminForecastPage() {
           <div className="px-4 py-3.5 rounded-2xl bg-slate-50 border border-slate-200/80">
             <div className="flex items-start gap-2">
               <Info className="w-4 h-4 text-slate-400 flex-shrink-0 mt-0.5" />
-              <p className="text-[11.5px] text-slate-500 leading-snug">AI forecasts are probabilistic estimates based on historical patterns. Human judgment should guide operational decisions.</p>
+              <p className="text-[11.5px] text-slate-500 leading-snug">This is a transparent baseline from historical averages, not a trained model. Use it as a guide alongside your own judgment.</p>
             </div>
           </div>
         </div>

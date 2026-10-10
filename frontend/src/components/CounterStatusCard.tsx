@@ -45,6 +45,7 @@ export const CounterStatusCard: React.FC<CounterStatusCardProps> = ({ counters }
             >
               <div>
                 <div className="text-[11px] font-medium text-slate-500">{c.name}</div>
+                <div className="text-[10px] text-slate-400 truncate">{c.serviceName ?? 'All services'}</div>
                 <div className="flex items-center gap-1.5 mt-0.5">
                   <span className={`w-1.5 h-1.5 rounded-full ${s.dot}`} />
                   <span className={`text-[11px] font-bold ${s.text}`}>{s.label}</span>

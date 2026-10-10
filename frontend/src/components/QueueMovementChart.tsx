@@ -4,11 +4,17 @@ import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, ReferenceLine,
 } from 'recharts';
-import { MOCK_QUEUE_CHART_DATA } from '../mock/data';
+import type { QueueDataPoint } from '../types';
 
-export const QueueMovementChart: React.FC = () => {
-  const [timeRange, setTimeRange] = useState('Last 1 Hour');
+interface QueueMovementChartProps {
+  data: QueueDataPoint[];
+}
+
+export const QueueMovementChart: React.FC<QueueMovementChartProps> = ({ data }) => {
+  const [timeRange, setTimeRange] = useState('Today');
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const nowPoint = data.find(d => d.isNow);
+  const max = Math.max(5, ...data.map(d => d.count));
 
   return (
     <div className="w-full bg-white/95 backdrop-blur-md rounded-[24px] border border-slate-100/90 shadow-[0_4px_24px_rgba(0,0,0,0.03)] p-5">
@@ -25,7 +31,7 @@ export const QueueMovementChart: React.FC = () => {
           </button>
           {dropdownOpen && (
             <div className="absolute right-0 top-full mt-1.5 w-36 bg-white rounded-xl shadow-lg border border-slate-100 p-1.5 z-30">
-              {['Last 1 Hour', 'Last 2 Hours', 'Today', 'This Week'].map((item) => (
+              {['Today'].map((item) => (
                 <button
                   key={item}
                   onClick={() => { setTimeRange(item); setDropdownOpen(false); }}
@@ -41,10 +47,10 @@ export const QueueMovementChart: React.FC = () => {
         </div>
       </div>
 
-      <div className="text-[11px] font-medium text-slate-400 mt-1 mb-3">People in queue</div>
+      <div className="text-[11px] font-medium text-slate-400 mt-1 mb-3">Tokens created per hour</div>
 
       <ResponsiveContainer width="100%" height={160}>
-        <AreaChart data={MOCK_QUEUE_CHART_DATA} margin={{ top: 4, right: 4, left: -28, bottom: 0 }}>
+        <AreaChart data={data} margin={{ top: 4, right: 4, left: -28, bottom: 0 }}>
           <defs>
             <linearGradient id="qGrad" x1="0" y1="0" x2="0" y2="1">
               <stop offset="0%"   stopColor="#e11d48" stopOpacity={0.30} />
@@ -64,8 +70,8 @@ export const QueueMovementChart: React.FC = () => {
             tick={{ fontSize: 10, fill: '#94a3b8', fontWeight: 500 }}
             tickLine={false}
             axisLine={false}
-            domain={[0, 60]}
-            ticks={[0, 20, 40, 60]}
+            domain={[0, max]}
+            allowDecimals={false}
           />
           <Tooltip
             contentStyle={{
@@ -75,11 +81,11 @@ export const QueueMovementChart: React.FC = () => {
               fontSize: 11,
               boxShadow: '0 4px 16px rgba(0,0,0,0.06)',
             }}
-            formatter={(v: unknown) => [`${v as number} people`, 'In queue']}
+            formatter={(v: unknown) => [`${v as number} tokens`, 'Created']}
             labelFormatter={(l: unknown) => String(l)}
           />
-          <ReferenceLine
-            x="2:18 PM"
+          {nowPoint && <ReferenceLine
+            x={nowPoint.time}
             stroke="#e11d48"
             strokeDasharray="4 3"
             strokeWidth={1.5}
@@ -90,7 +96,7 @@ export const QueueMovementChart: React.FC = () => {
               fill: '#e11d48',
               fontWeight: 700,
             }}
-          />
+          />}
           <Area
             type="monotone"
             dataKey="count"

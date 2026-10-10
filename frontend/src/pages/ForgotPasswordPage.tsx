@@ -11,8 +11,8 @@ export default function ForgotPasswordPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    // The API has no self-service reset yet, so we do not pretend an email was sent.
     setLoading(true);
-    await new Promise(r => setTimeout(r, 800));
     setSent(true);
     setLoading(false);
   };
@@ -28,8 +28,8 @@ export default function ForgotPasswordPage() {
               <div className="w-12 h-12 rounded-full bg-emerald-50 border border-emerald-200 flex items-center justify-center mx-auto mb-4">
                 <CheckCircle2 className="w-6 h-6 text-emerald-600" />
               </div>
-              <h1 className="text-[20px] font-black text-slate-900 mb-2">Check your email</h1>
-              <p className="text-[13px] text-slate-500 mb-6">We've sent a password reset link to <strong className="text-slate-700">{email}</strong>. Check your inbox and follow the instructions.</p>
+              <h1 className="text-[20px] font-black text-slate-900 mb-2">Reset isn't available online yet</h1>
+              <p className="text-[13px] text-slate-500 mb-6">Self-service password reset is not enabled. No email was sent to <strong className="text-slate-700">{email}</strong>. Please contact your office administrator to have your password reset.</p>
               <Link to="/login" className="block w-full py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-[13.5px] text-center transition-colors">
                 Back to Sign In
               </Link>

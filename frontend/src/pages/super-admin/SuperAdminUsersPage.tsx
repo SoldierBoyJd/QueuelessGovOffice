@@ -1,6 +1,12 @@
 import { useState } from 'react';
 import { Search } from 'lucide-react';
-import { DEMO_USERS } from '../../stores/authStore';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { adminApi } from '../../services/api/admin';
+import { LoadingState } from '../../components/ui/LoadingState';
+import { ErrorState } from '../../components/ui/ErrorState';
+import { toast } from '../../components/ui/Toast';
+import { parseApiError } from '../../services/api/client';
+import { useAuthStore } from '../../stores/authStore';
 import type { Role } from '../../types';
 
 const ROLE_STYLE: Record<Role, string> = {
@@ -11,27 +17,30 @@ const ROLE_STYLE: Record<Role, string> = {
   SUPER_ADMIN:  'bg-red-50 border-red-200/80 text-red-700',
 };
 
-const EXTRA_USERS = [
-  { id: 'u1', name: 'Rahul Patel',    email: 'rahul.patel@gmail.com',       role: 'CITIZEN' as Role,       verificationStatus: 'NOT_REQUIRED', avatarInitials: 'RP', createdAt: '2026-08-10T00:00:00Z' },
-  { id: 'u2', name: 'Sneha Kapoor',   email: 'sneha@gmail.com',             role: 'CITIZEN' as Role,       verificationStatus: 'NOT_REQUIRED', avatarInitials: 'SK', createdAt: '2026-07-22T00:00:00Z' },
-  { id: 'u3', name: 'Amit Verma',     email: 'amit.verma@gov.in',           role: 'OFFICER' as Role,       verificationStatus: 'APPROVED',     avatarInitials: 'AV', createdAt: '2025-09-01T00:00:00Z' },
-  { id: 'u4', name: 'Deepak Singh',   email: 'deepak.singh@gov.in',         role: 'OFFICER' as Role,       verificationStatus: 'APPROVED',     avatarInitials: 'DS', createdAt: '2025-10-15T00:00:00Z' },
-  { id: 'u5', name: 'Kavya Nair',     email: 'kavya.nair@gov.in',           role: 'OFFICER' as Role,       verificationStatus: 'APPROVED',     avatarInitials: 'KN', createdAt: '2025-11-01T00:00:00Z' },
-  { id: 'u6', name: 'Arun Mishra',    email: 'arun.mishra@gov.in',          role: 'OFFICER' as Role,       verificationStatus: 'UNDER_REVIEW', avatarInitials: 'AM', createdAt: '2026-09-27T00:00:00Z' },
-];
-
-const ALL_USERS = [...Object.values(DEMO_USERS), ...EXTRA_USERS];
-
 export default function SuperAdminUsersPage() {
   const [query, setQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState<Role | 'ALL'>('ALL');
-
-  const filtered = ALL_USERS.filter(u => {
-    const q = query.toLowerCase();
-    const matchQ = !q || u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q);
-    const matchR = roleFilter === 'ALL' || u.role === roleFilter;
-    return matchQ && matchR;
+  const [busy, setBusy] = useState<string | null>(null);
+  const qc = useQueryClient();
+  const me = useAuthStore(st => st.user?.id);
+  const { data: filtered = [], isLoading, error, refetch } = useQuery({
+    queryKey: ['admin', 'users', query, roleFilter],
+    queryFn: () => adminApi.users({ ...(query.trim() ? { q: query.trim() } : {}), ...(roleFilter !== 'ALL' ? { role: roleFilter } : {}) }),
+    placeholderData: prev => prev,
   });
+
+  const toggleActive = async (id: string, active: boolean) => {
+    setBusy(id);
+    try {
+      await adminApi.setUserActive(id, active);
+      toast.success(active ? 'User activated' : 'User deactivated');
+      await qc.invalidateQueries({ queryKey: ['admin', 'users'] });
+    } catch (e) {
+      toast.error('Could not update user', parseApiError(e).message);
+    } finally {
+      setBusy(null);
+    }
+  };
 
   const VS_LABEL: Record<string, string> = {
     NOT_REQUIRED: 'N/A', PENDING: 'Pending', UNDER_REVIEW: 'In Review',
@@ -47,7 +56,7 @@ export default function SuperAdminUsersPage() {
     <div className="flex flex-col gap-5">
       <div>
         <h1 className="text-[22px] font-black text-slate-900 tracking-tight">User Management</h1>
-        <p className="text-[13px] text-slate-500 mt-0.5">{ALL_USERS.length} registered users</p>
+        <p className="text-[13px] text-slate-500 mt-0.5">{filtered.length} user{filtered.length === 1 ? '' : 's'} shown</p>
       </div>
 
       <div className="flex items-center gap-3 flex-wrap">
@@ -72,9 +81,12 @@ export default function SuperAdminUsersPage() {
           <div className="col-span-3">Email</div>
           <div className="col-span-2">Role</div>
           <div className="col-span-2">Verification</div>
-          <div className="col-span-2 text-right">Joined</div>
+          <div className="col-span-1 text-right">Joined</div>
+          <div className="col-span-1 text-right">Access</div>
         </div>
         <div className="divide-y divide-slate-50">
+          {isLoading && <LoadingState compact message="Loading users…" />}
+          {error && <ErrorState compact message={parseApiError(error).message} onRetry={() => void refetch()} />}
           {filtered.map(u => (
             <div key={u.id} className="grid grid-cols-12 min-w-[560px] items-center px-5 py-3.5 hover:bg-slate-50/50 transition-colors">
               <div className="col-span-3 flex items-center gap-2.5">
@@ -90,12 +102,21 @@ export default function SuperAdminUsersPage() {
               <div className={`col-span-2 text-[12.5px] ${VS_STYLE[u.verificationStatus]}`}>
                 {VS_LABEL[u.verificationStatus]}
               </div>
-              <div className="col-span-2 text-right text-[12px] text-slate-400">
-                {new Date(u.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+              <div className="col-span-1 text-right text-[12px] text-slate-400">
+                {new Date(u.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+              </div>
+              <div className="col-span-1 flex justify-end">
+                <button
+                  disabled={busy === u.id || u.id === me}
+                  onClick={() => void toggleActive(u.id, !u.isActive)}
+                  className={`px-2 py-1 rounded-lg border text-[10.5px] font-bold transition-colors disabled:opacity-40 ${u.isActive ? 'border-slate-200 text-slate-500 hover:bg-slate-50' : 'border-emerald-200 bg-emerald-50 text-emerald-700'}`}
+                >
+                  {u.isActive ? 'Disable' : 'Enable'}
+                </button>
               </div>
             </div>
           ))}
-          {filtered.length === 0 && (
+          {!isLoading && !error && filtered.length === 0 && (
             <div className="px-5 py-10 text-center text-[13px] text-slate-400">No users match your filters.</div>
           )}
         </div>

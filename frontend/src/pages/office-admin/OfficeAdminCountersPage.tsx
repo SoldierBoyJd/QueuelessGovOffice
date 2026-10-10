@@ -1,18 +1,40 @@
 import { Play, Pause, X, RotateCcw } from 'lucide-react';
-import { useDemoStore } from '../../stores/demoStore';
+import { useLiveStore } from '../../stores/liveStore';
 import { useState } from 'react';
 import { toast } from '../../components/ui/Toast';
+import { useQuery } from '@tanstack/react-query';
+import { adminApi } from '../../services/api/admin';
+import { officesApi } from '../../services/api/offices';
+import { useAuthStore } from '../../stores/authStore';
+import { parseApiError } from '../../services/api/client';
+import { useMyOffice } from '../../hooks/useMyOffice';
 
 export default function OfficeAdminCountersPage() {
-  const { counters, pauseCounter, resumeCounter, closeCounter } = useDemoStore();
+  const { counters, pauseCounter, resumeCounter, closeCounter, openCounter, refresh } = useLiveStore();
+  const officeId = useAuthStore(st => st.user?.officeId);
+  const { data: services = [] } = useQuery({ queryKey: ['office-services', officeId], queryFn: () => officesApi.getServices(officeId!), enabled: !!officeId });
+  const { data: officers = [], refetch: refetchOfficers } = useQuery({ queryKey: ['office-officers', officeId], queryFn: () => adminApi.users({ role: 'OFFICER' }), enabled: !!officeId });
+  const changeService = (counterId: string, value: string) =>
+    doAction(`s-${counterId}`, async () => { await adminApi.updateCounter(counterId, { serviceId: value || null }); await refresh(); }, 'Counter service updated');
+  const assignOfficer = (counterId: string, userId: string, previous?: string) =>
+    doAction(`a-${counterId}`, async () => {
+      if (previous && previous !== userId) await adminApi.assignCounter(previous, null);
+      if (userId) await adminApi.assignCounter(userId, counterId);
+      await Promise.all([refresh(), refetchOfficers()]);
+    }, userId ? 'Officer assigned' : 'Officer unassigned');
+  const { data: office } = useMyOffice();
   const [loading, setLoading] = useState<string | null>(null);
 
-  const doAction = async (key: string, fn: () => void, successMsg: string) => {
+  const doAction = async (key: string, fn: () => Promise<void>, successMsg: string) => {
     setLoading(key);
-    await new Promise(r => setTimeout(r, 500));
-    fn();
-    setLoading(null);
-    toast.info(successMsg);
+    try {
+      await fn();
+      toast.info(successMsg);
+    } catch (e) {
+      toast.error('Action failed', parseApiError(e).message);
+    } finally {
+      setLoading(null);
+    }
   };
 
   const STATUS_STYLE: Record<string, { dot: string; pill: string; label: string }> = {
@@ -26,7 +48,7 @@ export default function OfficeAdminCountersPage() {
     <div className="flex flex-col gap-5">
       <div>
         <h1 className="text-[22px] font-black text-slate-900 tracking-tight">Counter Management</h1>
-        <p className="text-[13px] text-slate-500 mt-0.5">Rajkot District Office · {counters.filter(c => c.status === 'ACTIVE').length}/{counters.length} counters active</p>
+        <p className="text-[13px] text-slate-500 mt-0.5">{office?.name ?? ''} · {counters.filter(c => c.status === 'ACTIVE').length}/{counters.length} counters active</p>
       </div>
 
       {/* Summary bar */}
@@ -58,7 +80,7 @@ export default function OfficeAdminCountersPage() {
               <div className="flex items-start justify-between mb-4">
                 <div>
                   <h3 className="text-[15px] font-black text-slate-900">{c.name}</h3>
-                  <p className="text-[12px] text-slate-400 mt-0.5">{c.officerName ?? 'Unassigned'}</p>
+                  <p className="text-[12px] text-slate-400 mt-0.5">{c.officerName ?? 'No officer assigned'}</p>
                 </div>
                 <span className={`px-2.5 py-1 rounded-full border text-[11.5px] font-bold ${s.pill}`}>
                   <span className={`inline-block w-1.5 h-1.5 rounded-full ${s.dot} mr-1.5 align-middle`} />{s.label}
@@ -72,7 +94,6 @@ export default function OfficeAdminCountersPage() {
                     <div>
                       <div className="text-[10.5px] text-slate-400 font-semibold uppercase tracking-wide">Serving</div>
                       <div className="text-[20px] font-black text-slate-900">{c.currentTokenDisplay}</div>
-                      <div className="text-[12px] text-slate-500">{c.currentCitizenName}</div>
                     </div>
                     <div className="text-right">
                       <div className="text-[10.5px] text-slate-400 font-semibold uppercase tracking-wide">Service</div>
@@ -98,6 +119,28 @@ export default function OfficeAdminCountersPage() {
                 </div>
               </div>
 
+              {/* Configuration: which service the counter handles, and who works it */}
+              <div className="grid grid-cols-1 gap-2 mb-4">
+                <label className="block">
+                  <span className="block text-[10.5px] font-semibold text-slate-400 uppercase tracking-wide mb-1">Handles service</span>
+                  <select value={services.find(sv => sv.name === c.serviceName)?.id ?? ''} disabled={loading !== null}
+                    onChange={e => void changeService(c.id, e.target.value)}
+                    className="w-full liquid-glass-search rounded-xl px-2.5 py-2 text-[12.5px] text-slate-800 outline-none font-medium">
+                    <option value="">All services</option>
+                    {services.map(sv => <option key={sv.id} value={sv.id}>{sv.name}</option>)}
+                  </select>
+                </label>
+                <label className="block">
+                  <span className="block text-[10.5px] font-semibold text-slate-400 uppercase tracking-wide mb-1">Officer</span>
+                  <select value={c.officerId ?? ''} disabled={loading !== null}
+                    onChange={e => void assignOfficer(c.id, e.target.value, c.officerId)}
+                    className="w-full liquid-glass-search rounded-xl px-2.5 py-2 text-[12.5px] text-slate-800 outline-none font-medium">
+                    <option value="">Unassigned</option>
+                    {officers.filter(o => o.isActive).map(o => <option key={o.id} value={o.id}>{o.name}{o.counterId && o.counterId !== c.id ? ' (on another counter)' : ''}</option>)}
+                  </select>
+                </label>
+              </div>
+
               {/* Actions */}
               <div className="flex gap-2">
                 {c.status === 'ACTIVE' && (
@@ -113,7 +156,7 @@ export default function OfficeAdminCountersPage() {
                   </button>
                 )}
                 {c.status === 'CLOSED' && (
-                  <button onClick={() => doAction(`o-${c.id}`, () => resumeCounter(c.id), `${c.name} opened`)} disabled={loading !== null}
+                  <button onClick={() => doAction(`o-${c.id}`, () => openCounter(c.id), `${c.name} opened`)} disabled={loading !== null}
                     className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[12px] transition-colors disabled:opacity-50">
                     <RotateCcw className="w-3.5 h-3.5" />{loading === `o-${c.id}` ? '…' : 'Open'}
                   </button>

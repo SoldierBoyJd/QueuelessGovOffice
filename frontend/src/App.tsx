@@ -158,6 +158,7 @@ export default function App() {
       {/* ── Verification (standalone, accessible by admin roles via direct URL) ── */}
       <Route path="/verification" element={<RequireAuth roles={['OFFICE_ADMIN', 'CENTRAL_ADMIN', 'SUPER_ADMIN']}><OfficeAdminLayout /></RequireAuth>}>
         <Route index element={<VerificationCopilotPage />} />
+        <Route path=":id" element={<VerificationCopilotPage />} />
       </Route>
 
       {/* 404 → home */}

@@ -2,17 +2,31 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { User, Mail, Phone, Shield, LogOut, ChevronRight } from 'lucide-react';
 import { useAuthStore } from '../../stores/authStore';
+import { authApi } from '../../services/api/auth';
+import { parseApiError } from '../../services/api/client';
+import { toast } from '../../components/ui/Toast';
 
 export default function ProfilePage() {
-  const { user, logout } = useAuthStore();
+  const { user, logout, updateUser } = useAuthStore();
   const navigate = useNavigate();
   const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [name, setName] = useState(user?.name ?? '');
+  const [phone, setPhone] = useState(user?.phone ?? '');
 
   const handleLogout = () => { logout(); navigate('/login'); };
   const handleSave = async () => {
-    await new Promise(r => setTimeout(r, 500));
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    setSaving(true);
+    try {
+      const updated = await authApi.updateProfile({ name: name.trim(), phone: phone.trim() });
+      updateUser(updated);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (e) {
+      toast.error('Could not save profile', parseApiError(e).message);
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -38,9 +52,9 @@ export default function ProfilePage() {
 
         <div className="space-y-4">
           {[
-            { icon: User, label: 'Full name', value: user?.name ?? '', type: 'text' },
-            { icon: Mail, label: 'Email address', value: user?.email ?? '', type: 'email' },
-            { icon: Phone, label: 'Phone number', value: user?.phone ?? '+91 98765 43210', type: 'tel' },
+            { icon: User, label: 'Full name', value: name, type: 'text', onChange: setName, readOnly: false },
+            { icon: Mail, label: 'Email address', value: user?.email ?? '', type: 'email', onChange: undefined, readOnly: true },
+            { icon: Phone, label: 'Phone number', value: phone, type: 'tel', onChange: setPhone, readOnly: false },
           ].map(f => {
             const Icon = f.icon;
             return (
@@ -48,7 +62,7 @@ export default function ProfilePage() {
                 <label className="block text-[12.5px] font-semibold text-slate-700 mb-1.5">
                   <span className="flex items-center gap-1.5"><Icon className="w-3.5 h-3.5 text-slate-400" />{f.label}</span>
                 </label>
-                <input type={f.type} defaultValue={f.value}
+                <input type={f.type} value={f.value} readOnly={f.readOnly} onChange={e => f.onChange?.(e.target.value)}
                   className="w-full liquid-glass-search rounded-xl px-3.5 py-2.5 text-[13.5px] text-slate-800 placeholder-slate-400 outline-none font-medium" />
               </div>
             );
@@ -57,7 +71,7 @@ export default function ProfilePage() {
 
         <button onClick={handleSave}
           className="mt-5 px-6 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-[13.5px] transition-colors shadow-[0_4px_12px_rgba(220,38,38,0.2)]">
-          {saved ? '✓ Saved' : 'Save Changes'}
+          {saved ? '✓ Saved' : saving ? 'Saving…' : 'Save Changes'}
         </button>
       </div>
 
@@ -66,7 +80,6 @@ export default function ProfilePage() {
         {[
           { label: 'Verification status', value: user?.verificationStatus?.replace(/_/g, ' ') ?? 'Not Required' },
           { label: 'Account created', value: user?.createdAt ? new Date(user.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }) : '—' },
-          { label: 'Member since', value: '2026' },
         ].map((item, i) => (
           <div key={i} className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100 last:border-0 hover:bg-slate-50/50 cursor-pointer">
             <span className="text-[13px] font-medium text-slate-600">{item.label}</span>

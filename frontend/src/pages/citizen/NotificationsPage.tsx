@@ -1,5 +1,5 @@
 import { AlertTriangle, Info, CheckCircle2, XCircle } from 'lucide-react';
-import { useDemoStore } from '../../stores/demoStore';
+import { useLiveStore } from '../../stores/liveStore';
 import { NoNotifications } from '../../components/ui/EmptyState';
 import type { NotificationType } from '../../types';
 
@@ -18,7 +18,7 @@ function timeAgo(ts: string) {
 }
 
 export default function NotificationsPage() {
-  const { notifications, markNotificationRead } = useDemoStore();
+  const { notifications, markNotificationRead, markAllNotificationsRead } = useLiveStore();
 
   return (
     <div className="max-w-[700px] flex flex-col gap-5 mt-1">
@@ -27,7 +27,7 @@ export default function NotificationsPage() {
           <h2 className="text-[18px] font-black text-slate-900 tracking-tight">Notifications</h2>
           <p className="text-[13px] text-slate-500 mt-0.5">{notifications.filter(n => !n.read).length} unread</p>
         </div>
-        <button onClick={() => notifications.forEach(n => markNotificationRead(n.id))}
+        <button onClick={() => void markAllNotificationsRead()}
           className="text-[12.5px] font-semibold text-red-600 hover:text-red-700 transition-colors">
           Mark all read
         </button>
@@ -40,7 +40,7 @@ export default function NotificationsPage() {
           const cfg = TYPE_CONFIG[n.type] ?? TYPE_CONFIG.INFO;
           const Icon = cfg.icon;
           return (
-            <div key={n.id} onClick={() => markNotificationRead(n.id)}
+            <div key={n.id} onClick={() => void markNotificationRead(n.id)}
               className={`flex items-start gap-4 px-5 py-4 rounded-2xl border cursor-pointer transition-all ${cfg.bg} ${cfg.border} ${!n.read ? 'shadow-[0_2px_12px_rgba(0,0,0,0.04)]' : 'opacity-70'}`}>
               <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 ${n.type === 'WARNING' ? 'bg-amber-100' : n.type === 'SUCCESS' ? 'bg-emerald-100' : 'bg-slate-100'}`}>
                 <Icon className={`w-4 h-4 ${cfg.text}`} />

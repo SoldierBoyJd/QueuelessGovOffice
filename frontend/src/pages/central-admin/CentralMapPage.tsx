@@ -1,9 +1,12 @@
 import { useState, useEffect } from 'react';
 import { MapContainer, TileLayer, CircleMarker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
-import { MOCK_OFFICE_SUMMARIES } from '../../mock/data';
 import type { CongestionLevel } from '../../types';
 import { MapPin, Users, Clock } from 'lucide-react';
+import { useCentralData } from '../../hooks/useCentralData';
+import { LoadingState } from '../../components/ui/LoadingState';
+import { ErrorState } from '../../components/ui/ErrorState';
+import { parseApiError } from '../../services/api/client';
 
 const CONG_COLOR: Record<CongestionLevel, string> = {
   NORMAL: '#2f7d57',
@@ -17,16 +20,20 @@ const CONG_STYLE: Record<CongestionLevel, string> = {
 };
 
 export default function CentralMapPage() {
+  const { offices, isLoading, error, refetch } = useCentralData();
   const [mapReady, setMapReady] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
   const [filterCong, setFilterCong] = useState<CongestionLevel | 'ALL'>('ALL');
 
   useEffect(() => { setMapReady(true); }, []);
 
-  const filtered = MOCK_OFFICE_SUMMARIES.filter(
-    o => filterCong === 'ALL' || o.congestion === filterCong
+  const filtered = offices.filter(
+    o => (filterCong === 'ALL' || o.congestion === filterCong) && !!o.lat && !!o.lng
   );
-  const selectedOffice = selected ? MOCK_OFFICE_SUMMARIES.find(o => o.id === selected) : null;
+  const selectedOffice = selected ? offices.find(o => o.id === selected) : null;
+
+  if (isLoading) return <LoadingState message="Loading network data…" />;
+  if (error) return <ErrorState message={parseApiError(error).message} onRetry={refetch} />;
 
   return (
     <div className="flex flex-col gap-5">

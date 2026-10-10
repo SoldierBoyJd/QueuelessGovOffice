@@ -1,25 +1,32 @@
 import { apiClient } from './client';
+import { toUser } from './adapters';
 import type { User } from '../../types';
 
-export interface LoginRequest  { email: string; password: string; }
-export interface LoginResponse { access_token: string; token_type: string; user: User; }
+export interface LoginRequest { email: string; password: string; }
+export interface LoginResponse { token: string; user: User; }
+export interface RegisterRequest { name: string; email: string; phone?: string; password: string; }
 
 export const authApi = {
-  login:          (data: LoginRequest) =>
-    apiClient.post<LoginResponse>('/auth/login', data).then(r => r.data),
+  login: async (data: LoginRequest): Promise<LoginResponse> => {
+    const r = await apiClient.post('/auth/login', data);
+    return { token: r.data.access_token, user: toUser(r.data.user) };
+  },
 
-  me:             () =>
-    apiClient.get<User>('/auth/me').then(r => r.data),
+  me: () => apiClient.get('/users/me').then(r => toUser(r.data)),
 
-  register:       (data: { name: string; email: string; phone?: string; password: string }) =>
-    apiClient.post<{ message: string }>('/auth/register', data).then(r => r.data),
+  register: (data: RegisterRequest) =>
+    apiClient.post('/auth/register', {
+      full_name: data.name,
+      email: data.email,
+      password: data.password,
+      ...(data.phone?.trim() ? { phone: data.phone.trim() } : {}),
+    }).then(r => toUser(r.data.user)),
 
-  forgotPassword: (email: string) =>
-    apiClient.post<{ message: string }>('/auth/forgot-password', { email }).then(r => r.data),
+  updateProfile: (data: { name?: string; phone?: string }) =>
+    apiClient.patch('/users/me', {
+      ...(data.name !== undefined ? { full_name: data.name } : {}),
+      ...(data.phone !== undefined ? { phone: data.phone } : {}),
+    }).then(r => toUser(r.data)),
 
-  resetPassword:  (token: string, password: string) =>
-    apiClient.post<{ message: string }>('/auth/reset-password', { token, password }).then(r => r.data),
-
-  logout:         () =>
-    apiClient.post('/auth/logout').then(r => r.data),
+  logout: () => apiClient.post('/auth/logout').then(r => r.data),
 };

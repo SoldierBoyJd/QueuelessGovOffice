@@ -25,18 +25,11 @@ function timeAgo(ts: string) {
   return new Date(ts).toLocaleDateString();
 }
 
-const FALLBACK: AppNotification[] = [
-  { id: '1', type: 'WARNING', title: 'Your estimated service time changed', message: "Counter 03 temporarily unavailable. We've updated your estimated time.", timestamp: new Date(Date.now() - 12 * 60000).toISOString(), read: false },
-  { id: '2', type: 'INFO',    title: 'Counter 03 is temporarily unavailable', message: 'Services are being redirected to other counters.', timestamp: new Date(Date.now() - 20 * 60000).toISOString(), read: false },
-  { id: '3', type: 'INFO',    title: 'Your token A-184 is confirmed', message: 'You are in the queue for Passport Services.', timestamp: new Date(Date.now() - 35 * 60000).toISOString(), read: true },
-  { id: '4', type: 'SUCCESS', title: 'Token generated', message: 'Your token A-184 has been successfully created.', timestamp: new Date(Date.now() - 36 * 60000).toISOString(), read: true },
-];
-
 export const RecentUpdatesCard: React.FC<RecentUpdatesCardProps> = ({ notifications }) => {
   const navigate = useNavigate();
   const { user } = useAuthStore();
   const items = (notifications ?? []).slice(0, 4);
-  const display = items.length > 0 ? items : FALLBACK;
+  const display = items;
 
   const viewAllRoute = user?.role === 'CITIZEN' ? '/citizen/notifications' : null;
 
@@ -53,6 +46,9 @@ export const RecentUpdatesCard: React.FC<RecentUpdatesCardProps> = ({ notificati
           </button>
         )}
       </div>
+      {display.length === 0 && (
+        <p className="text-[12px] text-slate-400 text-center py-4">No updates yet.</p>
+      )}
       <div className="relative mt-2">
         <div className="absolute top-3 bottom-5 left-3 w-[1.5px] bg-slate-200" />
         <div className="space-y-4">

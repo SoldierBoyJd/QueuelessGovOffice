@@ -1,7 +1,10 @@
 import { AlertTriangle, TrendingUp } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { MOCK_OFFICE_SUMMARIES, MOCK_REGION_SUMMARIES } from '../../mock/data';
 import type { CongestionLevel } from '../../types';
+import { useCentralData } from '../../hooks/useCentralData';
+import { LoadingState } from '../../components/ui/LoadingState';
+import { ErrorState } from '../../components/ui/ErrorState';
+import { parseApiError } from '../../services/api/client';
 
 const CONG_COLOR: Record<CongestionLevel, string> = {
   NORMAL: '#2f7d57',
@@ -14,24 +17,27 @@ const CONG_STYLE: Record<CongestionLevel, { pill: string; label: string }> = {
   HIGH:   { pill: 'bg-red-50 border-red-200/80 text-red-700',             label: 'High'   },
 };
 
-const barData = MOCK_REGION_SUMMARIES.map(r => ({
-  name: r.name.length > 10 ? r.name.slice(0, 10) + '…' : r.name,
-  waiting: r.totalWaiting,
-  congestion: r.congestionLevel,
-}));
-
 const ttStyle = { background: '#fff', border: '1px solid #e2e8f0', borderRadius: 12, fontSize: 12 };
 
 export default function CentralCongestionPage() {
-  const highOffices  = MOCK_OFFICE_SUMMARIES.filter(o => o.congestion === 'HIGH');
-  const busyOffices  = MOCK_OFFICE_SUMMARIES.filter(o => o.congestion === 'BUSY');
-  const totalHigh    = MOCK_REGION_SUMMARIES.reduce((a, r) => a + r.highCongestionCount, 0);
+  const { offices, regions, isLoading, error, refetch } = useCentralData();
+  const barData = regions.map(r => ({
+    name: r.name.length > 10 ? r.name.slice(0, 10) + '…' : r.name,
+    waiting: r.totalWaiting,
+    congestion: r.congestionLevel,
+  }));
+  const highOffices  = offices.filter(o => o.congestion === 'HIGH');
+  const busyOffices  = offices.filter(o => o.congestion === 'BUSY');
+  if (isLoading) return <LoadingState message="Loading network data…" />;
+  if (error) return <ErrorState message={parseApiError(error).message} onRetry={refetch} />;
+
+  const totalHigh    = regions.reduce((a, r) => a + r.highCongestionCount, 0);
 
   return (
     <div className="flex flex-col gap-5">
       <div>
         <h1 className="text-[22px] font-black text-slate-900 tracking-tight">Congestion Intelligence</h1>
-        <p className="text-[13px] text-slate-500 mt-0.5">Real-time pressure across government offices · <span className="text-amber-600 font-semibold">DEMO DATA</span></p>
+        <p className="text-[13px] text-slate-500 mt-0.5">Real-time pressure across government offices</p>
       </div>
 
       {/* Alert banner */}
@@ -45,7 +51,7 @@ export default function CentralCongestionPage() {
 
       {/* Summary counts */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {([['HIGH', highOffices.length], ['BUSY', busyOffices.length], ['NORMAL', MOCK_OFFICE_SUMMARIES.filter(o => o.congestion === 'NORMAL').length]] as [CongestionLevel, number][]).map(([c, n]) => (
+        {([['HIGH', highOffices.length], ['BUSY', busyOffices.length], ['NORMAL', offices.filter(o => o.congestion === 'NORMAL').length]] as [CongestionLevel, number][]).map(([c, n]) => (
           <div key={c} className={`rounded-[20px] border p-5 ${CONG_STYLE[c].pill}`}>
             <div className="text-[28px] font-black tracking-tight">{n}</div>
             <div className="text-[12px] font-bold uppercase tracking-wide mt-1">{CONG_STYLE[c].label}</div>
@@ -58,7 +64,7 @@ export default function CentralCongestionPage() {
         {/* Bar chart */}
         <div className="lg:col-span-7 bg-white/95 backdrop-blur-md rounded-[24px] border border-slate-100/90 shadow-[0_4px_24px_rgba(0,0,0,0.03)] p-5">
           <h3 className="text-[14.5px] font-bold text-slate-900 mb-1">Waiting by State</h3>
-          <p className="text-[12px] text-slate-400 mb-4">Total citizens waiting per state (demo sample)</p>
+          <p className="text-[12px] text-slate-400 mb-4">Total citizens waiting per state</p>
           <ResponsiveContainer width="100%" height={240}>
             <BarChart data={barData} margin={{ top: 5, right: 10, left: -10, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />

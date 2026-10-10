@@ -32,8 +32,11 @@ apiClient.interceptors.request.use((config) => {
 apiClient.interceptors.response.use(
   (res) => res,
   (err: AxiosError) => {
-    if (err.response?.status === 401) {
-      // Clear persisted auth and redirect to login
+    const url = err.config?.url ?? '';
+    const isAuthCall = url.startsWith('/auth/login') || url.startsWith('/auth/register');
+    // An expired/revoked session on a normal call: drop persisted auth and go to login.
+    // Failed sign-ins (401 on /auth/login) must stay on the form so the error can be shown.
+    if (err.response?.status === 401 && !isAuthCall && localStorage.getItem('stl-auth')) {
       localStorage.removeItem('stl-auth');
       window.location.href = '/login';
     }
@@ -52,7 +55,16 @@ export function parseApiError(err: unknown): ApiError {
   if (axios.isAxiosError(err)) {
     const status = err.response?.status ?? 0;
     const data = err.response?.data as Record<string, unknown> | undefined;
+    const envelope = data?.error as { message?: unknown; details?: unknown } | undefined;
+    const fieldIssue = Array.isArray(envelope?.details)
+      ? (envelope.details as { field?: string; issue?: string }[])
+          .map(d => (d.field ? `${d.field}: ${d.issue}` : d.issue))
+          .filter(Boolean)
+          .join('; ')
+      : '';
     const message =
+      (fieldIssue || null) ??
+      (typeof envelope?.message === 'string' ? envelope.message : null) ??
       (typeof data?.detail === 'string' ? data.detail : null) ??
       (typeof data?.message === 'string' ? data.message : null) ??
       HTTP_MESSAGES[status] ??

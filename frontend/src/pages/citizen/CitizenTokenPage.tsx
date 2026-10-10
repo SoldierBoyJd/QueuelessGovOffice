@@ -1,14 +1,19 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { MapPin, AlertTriangle, X, Info } from 'lucide-react';
-import { useDemoStore } from '../../stores/demoStore';
+import { useLiveStore } from '../../stores/liveStore';
 import { NoActiveToken } from '../../components/ui/EmptyState';
+import { LoadingState } from '../../components/ui/LoadingState';
+import { toast } from '../../components/ui/Toast';
+import { parseApiError } from '../../services/api/client';
 
 export default function CitizenTokenPage() {
   const navigate = useNavigate();
-  const { token, notifications } = useDemoStore();
+  const { token, notifications, loaded, cancelToken } = useLiveStore();
   const [cancelling, setCancelling] = useState(false);
   const [showCancel, setShowCancel] = useState(false);
+
+  if (!loaded) return <LoadingState />;
 
   // Show empty state if no active token
   if (!token || token.status === 'COMPLETED' || token.status === 'CANCELLED') {
@@ -34,8 +39,16 @@ export default function CitizenTokenPage() {
 
   const handleCancel = async () => {
     setCancelling(true);
-    await new Promise(r => setTimeout(r, 800));
-    navigate('/citizen/home');
+    try {
+      await cancelToken();
+      toast.success('Token cancelled', 'You have left the queue.');
+      navigate('/citizen/home');
+    } catch (e) {
+      toast.error('Could not cancel token', parseApiError(e).message);
+      setShowCancel(false);
+    } finally {
+      setCancelling(false);
+    }
   };
 
   const STATUS_COLOR: Record<string, string> = {
@@ -79,8 +92,10 @@ export default function CitizenTokenPage() {
             </div>
             <div className="text-right">
               <div className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1">Position</div>
-              <div className="text-[40px] font-black text-slate-900 leading-none">{token.position}</div>
-              <div className="text-[12px] text-slate-500 mt-1">{token.peopleAhead} people ahead</div>
+              <div className="text-[40px] font-black text-slate-900 leading-none">{token.position > 0 ? token.position : '—'}</div>
+              <div className="text-[12px] text-slate-500 mt-1">
+                {token.status === 'CALLED' || token.status === 'SERVING' ? 'It is your turn' : token.position > 0 ? `${token.peopleAhead} people ahead` : 'Position pending'}
+              </div>
             </div>
           </div>
         </div>
@@ -92,13 +107,13 @@ export default function CitizenTokenPage() {
             <div className="text-[32px] font-black text-slate-900 leading-none">{token.prediction.estimatedTurnTime}</div>
             <div className="text-[12px] text-slate-400 mt-1.5 flex items-center gap-1">
               <Info className="w-3.5 h-3.5" />
-              Range: {token.prediction.lowerBoundMinutes}–{token.prediction.upperBoundMinutes} min · {token.prediction.confidence}% confidence
+              {token.prediction.upperBoundMinutes > 0 ? `Range: ${token.prediction.lowerBoundMinutes}–${token.prediction.upperBoundMinutes} min` : 'Estimate updates automatically'}{token.prediction.confidence > 0 ? ` · ${token.prediction.confidence}% confidence` : ''}
             </div>
           </div>
           <div>
             <div className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mb-1">Recommended Arrival</div>
             <div className="text-[32px] font-black text-red-600 leading-none">{token.prediction.recommendedArrival}</div>
-            <div className="text-[12px] text-slate-400 mt-1.5">Arrive 15 min before your turn</div>
+            <div className="text-[12px] text-slate-400 mt-1.5">Arrive by this time to keep your turn</div>
           </div>
         </div>
 
@@ -148,9 +163,9 @@ export default function CitizenTokenPage() {
         <div className="px-7 py-4 bg-slate-50/60">
           <div className="flex items-center gap-1.5 text-[11px] text-slate-400 font-medium">
             <div className="w-3 h-3 rounded-full bg-slate-300 flex items-center justify-center">
-              <span className="text-[7px] font-black text-white">AI</span>
+              <span className="text-[8px] font-black text-white">i</span>
             </div>
-            Prediction by {token.prediction.modelVersion} · Updates automatically
+            Estimate: {token.prediction.modelVersion} · Updates automatically
           </div>
         </div>
       </div>

@@ -7,7 +7,7 @@ import { SilkBackground } from '../components/SilkBackground';
 import { SilkRibbonWave } from '../components/SilkRibbonWave';
 import { ConnectionStatus } from '../components/ConnectionStatus';
 import { useAuthStore } from '../stores/authStore';
-import { useDemoStore } from '../stores/demoStore';
+import { useLiveStore } from '../stores/liveStore';
 import type { LucideIcon } from 'lucide-react';
 import { Landmark, Info, MessageSquare, Menu, X } from 'lucide-react';
 
@@ -42,7 +42,7 @@ export default function AdminShell({ sections, roleLabel, officeName, pageTitle,
   const navigate = useNavigate();
   const location = useLocation();
   const { user, logout } = useAuthStore();
-  const { wsStatus } = useDemoStore();
+  const { wsStatus } = useLiveStore();
 
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [tick, setTick] = useState(0);

@@ -12,12 +12,12 @@ import {
 import { Logo } from './Logo';
 import { IndiaEmblem } from './IndiaEmblem';
 import { ConnectionStatus } from './ConnectionStatus';
-import { useDemoStore } from '../stores/demoStore';
+import { useLiveStore } from '../stores/liveStore';
 
 export const Sidebar: React.FC = () => {
   const navigate  = useNavigate();
   const location  = useLocation();
-  const { notifications, wsStatus } = useDemoStore();
+  const { notifications, wsStatus } = useLiveStore();
   const unread = notifications.filter(n => !n.read).length;
 
   const navItems = [

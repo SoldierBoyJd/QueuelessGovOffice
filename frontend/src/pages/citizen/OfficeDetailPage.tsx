@@ -1,25 +1,54 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { MapPin, Clock, Phone, ChevronLeft, Users, Layers, Check } from 'lucide-react';
-import { MOCK_OFFICES } from '../../mock/data';
+import { useQuery } from '@tanstack/react-query';
+import { officesApi } from '../../services/api/offices';
+import { tokensApi } from '../../services/api/tokens';
+import { useAuthStore } from '../../stores/authStore';
+import { useLiveStore } from '../../stores/liveStore';
+import { LoadingState } from '../../components/ui/LoadingState';
+import { ErrorState } from '../../components/ui/ErrorState';
+import { toast } from '../../components/ui/Toast';
+import { parseApiError } from '../../services/api/client';
 
 export default function OfficeDetailPage() {
   const { officeId } = useParams();
   const navigate = useNavigate();
-  const office = MOCK_OFFICES.find(o => o.id === officeId) ?? MOCK_OFFICES[0];
+  const user = useAuthStore(st => st.user);
+  const activeToken = useLiveStore(st => st.token);
+  const refreshLive = useLiveStore(st => st.refresh);
+  const { data: office, isLoading, error, refetch } = useQuery({
+    queryKey: ['office', officeId],
+    queryFn: () => officesApi.get(officeId!),
+    enabled: !!officeId,
+    refetchInterval: 20_000,
+  });
   const [selectedService, setSelectedService] = useState<string | null>(null);
   const [taking, setTaking] = useState(false);
   const [taken, setTaken] = useState(false);
 
+  const selected = office?.departments.flatMap(d => d.services).find(sv => sv.id === selectedService);
+
   const handleTakeToken = async () => {
-    if (!selectedService) return;
+    if (!selectedService || !office) return;
     setTaking(true);
-    await new Promise(r => setTimeout(r, 900));
-    setTaking(false);
-    setTaken(true);
-    await new Promise(r => setTimeout(r, 800));
-    navigate('/citizen/token');
+    try {
+      await tokensApi.create({ officeId: office.id, serviceId: selectedService }, user ? { id: user.id, name: user.name } : null);
+      await refreshLive();
+      setTaken(true);
+      toast.success('Token issued', 'You are now in the queue.');
+      setTimeout(() => navigate('/citizen/token'), 600);
+    } catch (e) {
+      toast.error('Could not take a token', parseApiError(e).message);
+    } finally {
+      setTaking(false);
+    }
   };
+
+  if (isLoading) return <LoadingState message="Loading office…" />;
+  if (error || !office) {
+    return <ErrorState message={error ? parseApiError(error).message : 'Office not found.'} onRetry={() => void refetch()} />;
+  }
 
   return (
     <div className="flex flex-col gap-5 mt-1">
@@ -46,7 +75,7 @@ export default function OfficeDetailPage() {
           {[
             { icon: <Users className="w-4 h-4" />, label: 'Waiting', value: office.totalWaiting },
             { icon: <Layers className="w-4 h-4" />, label: 'Active Counters', value: `${office.activeCounters}/${office.totalCounters}` },
-            { icon: <Clock className="w-4 h-4" />, label: 'Avg Wait', value: `${office.avgWaitMinutes} min` },
+            { icon: <Clock className="w-4 h-4" />, label: 'Avg Wait', value: office.avgWaitMinutes > 0 ? `${office.avgWaitMinutes} min` : '—' },
             { icon: <Phone className="w-4 h-4" />, label: 'Hours', value: `${office.openTime} – ${office.closeTime}` },
           ].map(s => (
             <div key={s.label} className="flex items-center gap-2.5">
@@ -91,25 +120,34 @@ export default function OfficeDetailPage() {
           )}
         </div>
 
-        {/* Live queue preview */}
-        {selectedService && (
+        {/* Live queue preview (server estimate for a new token) */}
+        {selected && (
           <div className="mt-4 px-4 py-3.5 rounded-2xl bg-[#f8fafc] border border-slate-200/80">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-[12.5px] font-bold text-slate-800">Live queue · Passport Services</p>
-                <p className="text-[12px] text-slate-500 mt-0.5">37 waiting · 4 counters active · ~42 min estimated wait</p>
+                <p className="text-[12.5px] font-bold text-slate-800">Live queue · {selected.name}</p>
+                <p className="text-[12px] text-slate-500 mt-0.5">
+                  {selected.currentQueueLength ?? 0} waiting · {office.activeCounters} counters active
+                  {selected.currentWaitMinutes != null ? ` · ~${selected.currentWaitMinutes} min estimated wait` : ''}
+                </p>
               </div>
               <div className="text-right">
                 <p className="text-[11px] text-slate-400 font-medium">Your position</p>
-                <p className="text-[18px] font-black text-slate-900">#12</p>
+                <p className="text-[18px] font-black text-slate-900">#{(selected.currentQueueLength ?? 0) + 1}</p>
               </div>
             </div>
           </div>
         )}
 
-        <button onClick={handleTakeToken} disabled={!selectedService || taking || taken}
+        {activeToken && (
+          <p className="mt-4 text-[12.5px] font-semibold text-amber-700 bg-amber-50 border border-amber-200/80 rounded-xl px-3.5 py-2.5">
+            You already hold token {activeToken.displayNumber} at {activeToken.officeName}. You can take another only for a different service.
+          </p>
+        )}
+
+        <button onClick={handleTakeToken} disabled={!selectedService || taking || taken || !office.isOpen}
           className={`w-full mt-4 py-3 rounded-xl font-bold text-[14px] tracking-wide transition-all ${selectedService ? 'bg-red-600 hover:bg-red-700 text-white shadow-[0_4px_12px_rgba(220,38,38,0.25)]' : 'bg-slate-100 text-slate-400 cursor-not-allowed'} disabled:opacity-60`}>
-          {taken ? '✓ Token Issued — Redirecting…' : taking ? 'Issuing Token…' : 'Take Virtual Token →'}
+          {taken ? '✓ Token Issued — Redirecting…' : taking ? 'Issuing Token…' : !office.isOpen ? 'Office is closed' : 'Take Virtual Token →'}
         </button>
       </div>
     </div>

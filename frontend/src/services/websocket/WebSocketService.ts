@@ -1,114 +1,127 @@
 /**
- * Reusable WebSocket service with exponential backoff reconnection.
- * Used by useQueueWebSocket, useTokenWebSocket, useOfficeWebSocket hooks.
+ * Office realtime socket (WS /api/v1/ws/offices/{officeId}).
+ *
+ * Protocol: the first client frame must be {"type":"auth","token":"<jwt>"} so the token never appears in a
+ * URL. The server answers {"type":"connected"}; afterwards events are hints ("queue.updated",
+ * "token.eta_updated", "token.status_changed", "counter.status_changed", "notification.created") and clients
+ * are expected to refetch REST state — including after every (re)connect.
  */
-import type { WSEvent } from '../../types';
 
-type WSListener = (event: WSEvent) => void;
-type StatusListener = (status: 'LIVE' | 'RECONNECTING' | 'OFFLINE') => void;
+export type WsStatus = 'LIVE' | 'RECONNECTING' | 'OFFLINE';
 
-const WS_BASE = import.meta.env.VITE_WS_BASE_URL ?? 'ws://localhost:8000';
+export interface ServerEvent {
+  type: string;
+  office_id?: string | null;
+  event_id?: string;
+  occurred_at?: string;
+  data?: Record<string, unknown>;
+}
 
-class WebSocketService {
+type EventListener = (event: ServerEvent) => void;
+type StatusListener = (status: WsStatus) => void;
+
+const API_BASE: string = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000/api/v1';
+const WS_ORIGIN: string = import.meta.env.VITE_WS_BASE_URL ?? API_BASE.replace(/^http/, 'ws').replace(/\/api\/.*$/, '');
+const API_PATH = (() => {
+  try { return new URL(API_BASE).pathname.replace(/\/$/, ''); } catch { return '/api/v1'; }
+})();
+
+const PING_MS = 25_000;
+const MAX_RETRIES = 10;
+/** Close codes from the server that retrying cannot fix. 4401 = bad/expired token. */
+const FATAL_CODES = new Set([4403, 4404]);
+
+export class OfficeSocket {
   private socket: WebSocket | null = null;
-  private url = '';
-  private listeners = new Set<WSListener>();
-  private statusListeners = new Set<StatusListener>();
+  private officeId = '';
+  private token = '';
   private retryCount = 0;
-  private maxRetries = 8;
   private retryTimer: ReturnType<typeof setTimeout> | null = null;
-  private intentionalClose = false;
+  private pingTimer: ReturnType<typeof setInterval> | null = null;
+  private closedByUs = true;
+  private eventListeners = new Set<EventListener>();
+  private statusListeners = new Set<StatusListener>();
+  private authFailListeners = new Set<() => void>();
+  private openListeners = new Set<() => void>();
 
-  connect(path: string): void {
-    this.intentionalClose = false;
-    this.url = `${WS_BASE}${path}`;
-    this._open();
+  connect(officeId: string, token: string): void {
+    this.disconnect();
+    this.officeId = officeId;
+    this.token = token;
+    this.closedByUs = false;
+    this.retryCount = 0;
+    this.open();
   }
 
   disconnect(): void {
-    this.intentionalClose = true;
+    this.closedByUs = true;
     if (this.retryTimer) clearTimeout(this.retryTimer);
-    this.socket?.close();
+    if (this.pingTimer) clearInterval(this.pingTimer);
+    this.retryTimer = this.pingTimer = null;
+    const s = this.socket;
     this.socket = null;
+    if (s) { s.onopen = s.onmessage = s.onclose = s.onerror = null; s.close(); }
+    this.emitStatus('OFFLINE');
   }
 
-  send(data: unknown): void {
-    if (this.socket?.readyState === WebSocket.OPEN) {
-      this.socket.send(JSON.stringify(data));
-    }
-  }
+  onEvent(l: EventListener): () => void { this.eventListeners.add(l); return () => this.eventListeners.delete(l); }
+  onStatus(l: StatusListener): () => void { this.statusListeners.add(l); return () => this.statusListeners.delete(l); }
+  onAuthFailed(l: () => void): () => void { this.authFailListeners.add(l); return () => this.authFailListeners.delete(l); }
+  /** Fires after the server confirmed the connection — the moment to refetch REST state. */
+  onConnected(l: () => void): () => void { this.openListeners.add(l); return () => this.openListeners.delete(l); }
 
-  onMessage(listener: WSListener): () => void {
-    this.listeners.add(listener);
-    return () => this.listeners.delete(listener);
-  }
-
-  onStatus(listener: StatusListener): () => void {
-    this.statusListeners.add(listener);
-    return () => this.statusListeners.delete(listener);
-  }
-
-  private _open(): void {
-    this._setStatus('RECONNECTING');
+  private open(): void {
+    this.emitStatus('RECONNECTING');
+    let ws: WebSocket;
     try {
-      this.socket = new WebSocket(this.url);
+      ws = new WebSocket(`${WS_ORIGIN}${API_PATH}/ws/offices/${this.officeId}`);
     } catch {
-      this._scheduleRetry();
+      this.scheduleRetry();
       return;
     }
+    this.socket = ws;
 
-    this.socket.onopen = () => {
-      this.retryCount = 0;
-      this._setStatus('LIVE');
-    };
+    ws.onopen = () => ws.send(JSON.stringify({ type: 'auth', token: this.token }));
 
-    this.socket.onmessage = (e: MessageEvent) => {
-      try {
-        const event = JSON.parse(e.data as string) as WSEvent;
-        this.listeners.forEach(l => l(event));
-      } catch {
-        // ignore malformed messages
+    ws.onmessage = (e: MessageEvent) => {
+      let msg: ServerEvent;
+      try { msg = JSON.parse(e.data as string) as ServerEvent; } catch { return; }
+      if (msg.type === 'connected') {
+        this.retryCount = 0;
+        this.emitStatus('LIVE');
+        if (this.pingTimer) clearInterval(this.pingTimer);
+        this.pingTimer = setInterval(() => {
+          if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ type: 'ping' }));
+        }, PING_MS);
+        this.openListeners.forEach(l => l());
+        return;
       }
+      if (msg.type === 'pong') return;
+      this.eventListeners.forEach(l => l(msg));
     };
 
-    this.socket.onclose = () => {
-      if (!this.intentionalClose) this._scheduleRetry();
-      else this._setStatus('OFFLINE');
+    ws.onclose = (e: CloseEvent) => {
+      if (this.pingTimer) clearInterval(this.pingTimer);
+      this.pingTimer = null;
+      if (this.closedByUs) return;
+      if (e.code === 4401) { this.emitStatus('OFFLINE'); this.authFailListeners.forEach(l => l()); return; }
+      if (FATAL_CODES.has(e.code)) { this.emitStatus('OFFLINE'); return; }
+      this.scheduleRetry();
     };
 
-    this.socket.onerror = () => {
-      this.socket?.close();
-    };
+    ws.onerror = () => ws.close();
   }
 
-  private _scheduleRetry(): void {
-    if (this.retryCount >= this.maxRetries) {
-      this._setStatus('OFFLINE');
-      return;
-    }
-    this._setStatus('RECONNECTING');
-    // Exponential backoff: 1s, 2s, 4s, 8s … capped at 30s
+  private scheduleRetry(): void {
+    if (this.closedByUs) return;
+    if (this.retryCount >= MAX_RETRIES) { this.emitStatus('OFFLINE'); return; }
+    this.emitStatus('RECONNECTING');
     const delay = Math.min(1000 * 2 ** this.retryCount, 30_000);
-    this.retryCount++;
-    this.retryTimer = setTimeout(() => this._open(), delay);
+    this.retryCount += 1;
+    this.retryTimer = setTimeout(() => this.open(), delay);
   }
 
-  private _setStatus(s: 'LIVE' | 'RECONNECTING' | 'OFFLINE'): void {
-    this.statusListeners.forEach(l => l(s));
-  }
+  private emitStatus(s: WsStatus): void { this.statusListeners.forEach(l => l(s)); }
 }
 
-// ── Per-resource singleton factories ─────────────────────────────────────────
-
-const instances = new Map<string, WebSocketService>();
-
-export function getWsService(key: string): WebSocketService {
-  if (!instances.has(key)) instances.set(key, new WebSocketService());
-  return instances.get(key)!;
-}
-
-export function buildQueueWsPath(queueId: string)  { return `/ws/queues/${queueId}`; }
-export function buildTokenWsPath(tokenId: string)  { return `/ws/tokens/${tokenId}`; }
-export function buildOfficeWsPath(officeId: string){ return `/ws/offices/${officeId}`; }
-
-export { WebSocketService };
+export const officeSocket = new OfficeSocket();

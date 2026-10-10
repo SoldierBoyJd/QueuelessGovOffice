@@ -1,7 +1,9 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeftRight, ChevronRight, MapPin, Clock, BookOpen } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
 import type { Token } from '../types';
+import { officesApi } from '../services/api/offices';
 
 interface ServiceDetailsCardProps {
   token?: Token;
@@ -9,14 +11,19 @@ interface ServiceDetailsCardProps {
 
 export const ServiceDetailsCard: React.FC<ServiceDetailsCardProps> = ({ token }) => {
   const navigate = useNavigate();
-  const serviceName = token?.serviceName    ?? 'Passport Services';
-  const officeName  = token?.officeName     ?? 'Rajkot District Office';
-  const officeId    = token?.officeId       ?? 'off-001';
-  const dept        = token?.departmentName ?? 'Passport & Documentation';
+  const serviceName = token?.serviceName    ?? '—';
+  const officeName  = token?.officeName     ?? '—';
+  const officeId    = token?.officeId       ?? '';
+  const dept        = token?.departmentName ?? '—';
+  const { data: office } = useQuery({
+    queryKey: ['office', officeId],
+    queryFn: () => officesApi.get(officeId),
+    enabled: !!officeId,
+  });
 
   const openMaps = () => {
     // Opens Google Maps with the office address
-    const query = encodeURIComponent(`${officeName}, Gujarat, India`);
+    const query = encodeURIComponent(office ? `${office.name}, ${office.address}` : officeName);
     window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank', 'noopener,noreferrer');
   };
 
@@ -63,7 +70,7 @@ export const ServiceDetailsCard: React.FC<ServiceDetailsCardProps> = ({ token })
               </button>
             </div>
             <p className="text-[11.5px] text-slate-400 leading-snug mt-0.5">
-              Collectorate, Race Course Ring Road, Rajkot, Gujarat – 360001
+              {office?.address ?? ''}
             </p>
           </div>
         </div>
@@ -79,7 +86,7 @@ export const ServiceDetailsCard: React.FC<ServiceDetailsCardProps> = ({ token })
             <div className="text-[12.5px] font-bold text-slate-900">
               {new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'short', year: 'numeric' })}
             </div>
-            <div className="text-[11.5px] text-slate-400 font-medium mt-0.5">9:30 AM – 5:30 PM</div>
+            <div className="text-[11.5px] text-slate-400 font-medium mt-0.5">{office ? `${office.openTime} – ${office.closeTime}` : '—'}</div>
           </div>
         </div>
         <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-slate-700 transition-colors" />

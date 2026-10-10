@@ -61,6 +61,9 @@ export interface Service {
   description: string;
   avgServiceMinutes: number;
   iconName: string;
+  /** Server estimate for a token taken right now (null when it cannot be computed). */
+  currentWaitMinutes?: number | null;
+  currentQueueLength?: number | null;
 }
 
 // ─── Queue & Token ────────────────────────────────────────────────────────────
@@ -285,7 +288,7 @@ export interface OfficeSummary {
 
 // ─── System (Super Admin) ─────────────────────────────────────────────────────
 
-export type SystemComponentStatus = 'HEALTHY' | 'DEGRADED' | 'DOWN';
+export type SystemComponentStatus = 'HEALTHY' | 'DEGRADED' | 'DOWN' | 'NOT_CONFIGURED';
 
 export interface SystemComponent {
   name: string;

@@ -3,7 +3,9 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, AlertCircle, Info } from 'lucide-react';
 import { Logo } from '../components/Logo';
 import { SilkBackground } from '../components/SilkBackground';
-import { useAuthStore, DEMO_USERS, DEFAULT_ROUTE_FOR_ROLE } from '../stores/authStore';
+import { useAuthStore, DEFAULT_ROUTE_FOR_ROLE } from '../stores/authStore';
+import { authApi } from '../services/api/auth';
+import { parseApiError } from '../services/api/client';
 
 export default function RegisterPage() {
   const navigate = useNavigate();
@@ -21,11 +23,17 @@ export default function RegisterPage() {
     if (form.password !== form.confirm) { setError('Passwords do not match.'); return; }
     if (form.password.length < 8) { setError('Password must be at least 8 characters.'); return; }
     setLoading(true);
-    await new Promise(r => setTimeout(r, 700));
-    // Demo: create citizen and log in
-    const user = { ...DEMO_USERS.citizen, name: form.name || DEMO_USERS.citizen.name, email: form.email || DEMO_USERS.citizen.email };
-    login(user, 'demo-token-citizen');
-    navigate(DEFAULT_ROUTE_FOR_ROLE['CITIZEN']);
+    try {
+      await authApi.register({ name: form.name, email: form.email, phone: form.phone, password: form.password });
+      // Registration does not sign in; do it now with the credentials just created.
+      const { user, token } = await authApi.login({ email: form.email, password: form.password });
+      login(user, token);
+      navigate(DEFAULT_ROUTE_FOR_ROLE[user.role], { replace: true });
+    } catch (err) {
+      setError(parseApiError(err).message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -46,7 +54,7 @@ export default function RegisterPage() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {[
-              { key: 'name', label: 'Full name', type: 'text', placeholder: 'Jainam Doshi' },
+              { key: 'name', label: 'Full name', type: 'text', placeholder: 'Your full name' },
               { key: 'email', label: 'Email address', type: 'email', placeholder: 'you@example.com' },
               { key: 'phone', label: 'Phone number', type: 'tel', placeholder: '+91 98765 43210' },
             ].map(f => (

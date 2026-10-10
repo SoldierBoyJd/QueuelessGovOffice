@@ -1,6 +1,12 @@
 import { useState } from 'react';
 import { CheckCircle2, AlertTriangle, XCircle, Info, FileText, Mail, Phone, Building2, Shield, ChevronRight } from 'lucide-react';
-import { MOCK_VERIFICATION } from '../../mock/data';
+import { useParams } from 'react-router-dom';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { verificationApi, type Decision } from '../../services/api/verification';
+import { LoadingState } from '../../components/ui/LoadingState';
+import { ErrorState } from '../../components/ui/ErrorState';
+import { EmptyState } from '../../components/ui/EmptyState';
+import { parseApiError } from '../../services/api/client';
 import type { VerificationFindingType, VerificationStatus } from '../../types';
 import { toast } from '../../components/ui/Toast';
 
@@ -26,12 +32,6 @@ const AUDIT_TYPE_STYLE = {
   HUMAN:  'bg-blue-100 text-blue-700',
 };
 
-const DOC_QUALITY_STYLE = {
-  HIGH:   'text-emerald-600 bg-emerald-50 border-emerald-200/80',
-  MEDIUM: 'text-amber-600 bg-amber-50 border-amber-200/80',
-  LOW:    'text-red-600 bg-red-50 border-red-200/80',
-};
-
 function fmt(ts: string) {
   return new Date(ts).toLocaleString('en-IN', {
     day: 'numeric', month: 'short', year: 'numeric',
@@ -40,25 +40,65 @@ function fmt(ts: string) {
 }
 
 export default function VerificationCopilotPage() {
-  const app = MOCK_VERIFICATION;
-  const [status, setStatus] = useState<VerificationStatus>(app.status);
+  const { id } = useParams();
+  const qc = useQueryClient();
+  const { data: app, isLoading, error, refetch } = useQuery({
+    queryKey: ['verification', id],
+    queryFn: () => verificationApi.get(id!),
+    enabled: !!id,
+  });
   const [note, setNote] = useState('');
   const [submitting, setSubmitting] = useState<string | null>(null);
-  const [done, setDone] = useState<string | null>(null);
 
-  const doDecision = async (decision: 'APPROVE' | 'REJECT' | 'MORE_INFO') => {
+  if (!id) {
+    return <EmptyState title="Choose an application" description="Open an application from the verification list to review it." action={{ label: 'Open list', to: '/office-admin/verification' }} />;
+  }
+  if (isLoading) return <LoadingState message="Loading application…" />;
+  if (error || !app) return <ErrorState message={error ? parseApiError(error).message : 'Application not found.'} onRetry={() => void refetch()} />;
+
+  const status: VerificationStatus = app.status;
+  const open = status === 'PENDING' || status === 'UNDER_REVIEW';
+  const done: Decision | null = status === 'APPROVED' ? 'APPROVE' : status === 'REJECTED' ? 'REJECT' : status === 'MORE_INFO_REQUIRED' ? 'MORE_INFO' : null;
+
+  const sync = async () => {
+    await refetch();
+    void qc.invalidateQueries({ queryKey: ['verification', 'list'] });
+  };
+
+  const doDecision = async (decision: Decision) => {
+    if (decision !== 'APPROVE' && !note.trim()) {
+      toast.warning('A note is required', 'Explain why you are rejecting or what information is missing.');
+      return;
+    }
     setSubmitting(decision);
-    await new Promise(r => setTimeout(r, 900));
-    if (decision === 'APPROVE')   { setStatus('APPROVED'); toast.success('Application approved', `${app.applicantName} has been approved as ${app.requestedRole}.`); }
-    if (decision === 'REJECT')    { setStatus('REJECTED'); toast.error('Application rejected', 'The applicant has been notified.'); }
-    if (decision === 'MORE_INFO') { setStatus('MORE_INFO_REQUIRED'); toast.warning('More info requested', 'The applicant will be asked for additional documents.'); }
-    setDone(decision);
-    setSubmitting(null);
+    try {
+      await verificationApi.decide(app.id, decision, note.trim() || undefined);
+      if (decision === 'APPROVE')   toast.success('Application approved', `${app.applicantName} is now ${app.requestedRole.replace('_', ' ').toLowerCase()}.`);
+      if (decision === 'REJECT')    toast.error('Application rejected', 'The applicant has been notified.');
+      if (decision === 'MORE_INFO') toast.warning('More info requested', 'The applicant has been notified.');
+      await sync();
+    } catch (e) {
+      toast.error('Decision failed', parseApiError(e).message);
+    } finally {
+      setSubmitting(null);
+    }
+  };
+
+  const startReview = async () => {
+    setSubmitting('REVIEW');
+    try {
+      await verificationApi.startReview(app.id);
+      await sync();
+    } catch (e) {
+      toast.error('Could not start review', parseApiError(e).message);
+    } finally {
+      setSubmitting(null);
+    }
   };
 
   const currentStatus = STATUS_STYLE[status];
   const successCount  = app.findings.filter(f => f.type === 'SUCCESS').length;
-  const warningCount  = app.findings.filter(f => f.type === 'WARNING').length;
+  const warningCount  = app.findings.filter(f => f.type === 'WARNING' || f.type === 'ERROR').length;
 
   return (
     <div className="flex flex-col gap-5">
@@ -81,10 +121,10 @@ export default function VerificationCopilotPage() {
         {/* AI disclaimer banner */}
         <div className="flex items-center gap-3 px-5 py-3.5 rounded-2xl bg-blue-50/80 border border-blue-200/60">
           <div className="w-7 h-7 rounded-lg bg-blue-100 border border-blue-200/80 flex items-center justify-center flex-shrink-0">
-            <span className="text-[10px] font-black text-blue-600">AI</span>
+            <Info className="w-4 h-4 text-blue-600" />
           </div>
           <p className="text-[12.5px] text-blue-800 font-medium">
-            <strong>AI assists the verifier.</strong> All findings are for reference only. A human makes the final verification decision.
+            <strong>Automated checks only.</strong> Findings come from simple rule checks on the submitted details; documents are not analysed automatically. A human makes the final decision.
           </p>
         </div>
 
@@ -100,7 +140,7 @@ export default function VerificationCopilotPage() {
                 </div>
                 <div>
                   <div className="text-[15px] font-black text-slate-900">{app.applicantName}</div>
-                  <div className="text-[12px] text-slate-400 mt-0.5">Applicant ID: {app.applicantId}</div>
+                  <div className="text-[12px] text-slate-400 mt-0.5">Applicant ID: {app.applicantId.slice(0, 8)}</div>
                 </div>
               </div>
               <div className="space-y-3">
@@ -130,6 +170,7 @@ export default function VerificationCopilotPage() {
             <div className="bg-white/95 backdrop-blur-md rounded-[24px] border border-slate-100/90 shadow-[0_4px_24px_rgba(0,0,0,0.03)] p-5">
               <h3 className="text-[14.5px] font-bold text-slate-900 mb-4">Submitted Documents</h3>
               <div className="space-y-2.5">
+                {app.documents.length === 0 && <p className="text-[12.5px] text-slate-400">No documents were submitted.</p>}
                 {app.documents.map(doc => (
                   <div key={doc.id} className="flex items-center justify-between px-3.5 py-3 rounded-xl bg-slate-50/80 border border-slate-100 hover:bg-slate-50 transition-colors cursor-pointer group">
                     <div className="flex items-center gap-3">
@@ -142,9 +183,6 @@ export default function VerificationCopilotPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2.5">
-                      <span className={`px-2 py-0.5 rounded-full border text-[11px] font-bold ${DOC_QUALITY_STYLE[doc.quality]}`}>
-                        {doc.quality}
-                      </span>
                       <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-slate-500 transition-colors" />
                     </div>
                   </div>
@@ -186,14 +224,14 @@ export default function VerificationCopilotPage() {
             <div className="bg-white/95 backdrop-blur-md rounded-[24px] border border-slate-100/90 shadow-[0_4px_24px_rgba(0,0,0,0.03)] p-5">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-xl bg-purple-50 border border-purple-200/80 flex items-center justify-center">
-                    <span className="text-[10px] font-black text-purple-600">AI</span>
+                  <div className="w-7 h-7 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-center">
+                    <Shield className="w-3.5 h-3.5 text-slate-500" />
                   </div>
-                  <h3 className="text-[14.5px] font-bold text-slate-900">AI Findings</h3>
+                  <h3 className="text-[14.5px] font-bold text-slate-900">Automated Checks</h3>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-[11.5px] font-bold text-emerald-600 bg-emerald-50 border border-emerald-200/80 px-2.5 py-0.5 rounded-full">{successCount} passed</span>
-                  {warningCount > 0 && <span className="text-[11.5px] font-bold text-amber-600 bg-amber-50 border border-amber-200/80 px-2.5 py-0.5 rounded-full">{warningCount} warnings</span>}
+                  {warningCount > 0 && <span className="text-[11.5px] font-bold text-amber-600 bg-amber-50 border border-amber-200/80 px-2.5 py-0.5 rounded-full">{warningCount} to review</span>}
                 </div>
               </div>
 
@@ -213,17 +251,12 @@ export default function VerificationCopilotPage() {
                 })}
               </div>
 
-              {/* AI assessment */}
-              <div className="px-4 py-4 rounded-2xl bg-slate-50 border border-slate-200/80">
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="w-5 h-5 rounded-lg bg-slate-200 flex items-center justify-center flex-shrink-0">
-                    <span className="text-[8px] font-black text-slate-600">AI</span>
-                  </div>
-                  <span className="text-[11.5px] font-bold text-slate-500 uppercase tracking-wide">AI Assessment</span>
+              {app.aiAssessment && (
+                <div className="px-4 py-4 rounded-2xl bg-slate-50 border border-slate-200/80">
+                  <span className="text-[11.5px] font-bold text-slate-500 uppercase tracking-wide">Assessment</span>
+                  <p className="text-[13px] text-slate-700 leading-relaxed mt-2">{app.aiAssessment}</p>
                 </div>
-                <p className="text-[13px] text-slate-700 leading-relaxed italic">"{app.aiAssessment}"</p>
-                <p className="text-[11px] text-slate-400 mt-2 font-medium">This assessment is informational only. The verifier makes the final decision.</p>
-              </div>
+              )}
             </div>
 
             {/* Verification decision */}
@@ -231,27 +264,33 @@ export default function VerificationCopilotPage() {
               <h3 className="text-[14.5px] font-bold text-slate-900 mb-1">Verification Decision</h3>
               <p className="text-[12.5px] text-slate-500 mb-4">Review all findings and documents before deciding. This action is logged.</p>
 
-              {done ? (
+              {!open ? (
                 <div className={`flex items-center gap-3 px-4 py-4 rounded-2xl border ${done === 'APPROVE' ? 'bg-emerald-50 border-emerald-200/80' : done === 'REJECT' ? 'bg-red-50 border-red-200/80' : 'bg-blue-50 border-blue-200/80'}`}>
                   <CheckCircle2 className={`w-5 h-5 flex-shrink-0 ${done === 'APPROVE' ? 'text-emerald-600' : done === 'REJECT' ? 'text-red-600' : 'text-blue-600'}`} />
                   <div>
                     <div className={`text-[13.5px] font-black ${done === 'APPROVE' ? 'text-emerald-800' : done === 'REJECT' ? 'text-red-800' : 'text-blue-800'}`}>
                       {done === 'APPROVE' ? 'Application Approved' : done === 'REJECT' ? 'Application Rejected' : 'More Information Requested'}
                     </div>
-                    <div className="text-[12px] text-slate-500 mt-0.5">Decision recorded · {new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</div>
+                    <div className="text-[12px] text-slate-500 mt-0.5">Decision recorded{app.reviewedBy ? ` by ${app.reviewedBy}` : ''}{app.reviewedAt ? ` · ${fmt(app.reviewedAt)}` : ''}</div>
                   </div>
                 </div>
               ) : (
                 <>
                   <div className="mb-4">
                     <label className="block text-[12.5px] font-semibold text-slate-700 mb-1.5">
-                      Reviewer note <span className="text-slate-400 font-normal">(optional)</span>
+                      Reviewer note <span className="text-slate-400 font-normal">(required to reject or request info)</span>
                     </label>
                     <textarea value={note} onChange={e => setNote(e.target.value)} rows={3}
                       placeholder="Add any notes for this decision…"
                       className="w-full liquid-glass-search rounded-xl px-3.5 py-2.5 text-[13px] text-slate-800 placeholder-slate-400 outline-none font-medium resize-none" />
                   </div>
 
+                  {status === 'PENDING' && (
+                    <button onClick={startReview} disabled={submitting !== null}
+                      className="mb-3 w-full py-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold text-[12.5px] transition-colors disabled:opacity-50">
+                      {submitting === 'REVIEW' ? 'Starting…' : 'Start review'}
+                    </button>
+                  )}
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <button onClick={() => doDecision('APPROVE')} disabled={submitting !== null}
                       className="flex flex-col items-center gap-1.5 py-4 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[13px] transition-all shadow-[0_4px_12px_rgba(34,197,94,0.2)] disabled:opacity-50">

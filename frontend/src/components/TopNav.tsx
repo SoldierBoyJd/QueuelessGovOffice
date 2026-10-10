@@ -2,7 +2,9 @@ import React, { useState } from 'react';
 import { MapPin, Search, Bell, ChevronDown, Check } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
-import { useDemoStore } from '../stores/demoStore';
+import { useLiveStore } from '../stores/liveStore';
+import { useQuery } from '@tanstack/react-query';
+import { officesApi } from '../services/api/offices';
 
 interface TopNavProps {
   onSearch?: (query: string) => void;
@@ -14,7 +16,7 @@ interface TopNavProps {
 export const TopNav: React.FC<TopNavProps> = ({ onSearch, userName, userInitials, onLogout }) => {
   const navigate = useNavigate();
   const { user } = useAuthStore();
-  const { notifications } = useDemoStore();
+  const { notifications } = useLiveStore();
   const unread = notifications.filter(n => !n.read).length;
 
   const displayName     = userName     ?? user?.name     ?? 'User';
@@ -26,16 +28,15 @@ export const TopNav: React.FC<TopNavProps> = ({ onSearch, userName, userInitials
   const profileRoute = user?.role === 'CITIZEN' ? '/citizen/profile'       : null;
 
   const [searchValue, setSearchValue] = useState('');
-  const [selectedOffice, setSelectedOffice] = useState('Rajkot District Office');
   const [locationOpen, setLocationOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
 
-  const offices = [
-    { name: 'Rajkot District Office', city: 'Rajkot, Gujarat' },
-    { name: 'Ahmedabad RTO & Collectorate', city: 'Ahmedabad, Gujarat' },
-    { name: 'Surat Municipal Corporation', city: 'Surat, Gujarat' },
-    { name: 'Vadodara Civic Center', city: 'Vadodara, Gujarat' },
-  ];
+  const isCitizen = user?.role === 'CITIZEN';
+  const activeOfficeId = useLiveStore(st => st.token?.officeId) ?? user?.officeId;
+  const { data: offices = [] } = useQuery({ queryKey: ['offices', 'list'], queryFn: () => officesApi.list(), staleTime: 60_000 });
+  const current = offices.find(o => o.id === activeOfficeId);
+  const selectedOffice = current?.name ?? (isCitizen ? 'Find an office' : 'All offices');
+  const selectedCity = current ? [current.city, current.state].filter(Boolean).join(', ') : 'Government offices';
 
   return (
     <header className="w-full flex items-center justify-between gap-2 sm:gap-3 relative z-30 pt-1 pb-1 pl-10 lg:pl-0">
@@ -53,7 +54,7 @@ export const TopNav: React.FC<TopNavProps> = ({ onSearch, userName, userInitials
               {selectedOffice}
             </span>
             <span className="text-[10.5px] text-slate-400 font-medium leading-none mt-0.5">
-              Rajkot, Gujarat
+              {selectedCity}
             </span>
           </div>
           <ChevronDown className="w-3.5 h-3.5 text-slate-400 ml-1 group-hover:text-slate-600 transition-colors" />
@@ -67,10 +68,10 @@ export const TopNav: React.FC<TopNavProps> = ({ onSearch, userName, userInitials
             </div>
             {offices.map((office) => (
               <button
-                key={office.name}
+                key={office.id}
                 onClick={() => {
-                  setSelectedOffice(office.name);
                   setLocationOpen(false);
+                  if (isCitizen) navigate(`/citizen/offices/${office.id}`);
                 }}
                 className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-left text-xs transition-colors ${
                   selectedOffice === office.name

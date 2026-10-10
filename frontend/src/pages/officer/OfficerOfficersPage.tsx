@@ -1,15 +1,19 @@
-import { useDemoStore } from '../../stores/demoStore';
+import { useLiveStore } from '../../stores/liveStore';
 import { CheckCircle2, Clock, Hash } from 'lucide-react';
+import { useMyOffice } from '../../hooks/useMyOffice';
+import { useAuthStore } from '../../stores/authStore';
 
 export default function OfficerOfficersPage() {
-  const { counters } = useDemoStore();
+  const { counters } = useLiveStore();
+  const { data: office } = useMyOffice();
+  const myCounterId = useAuthStore(st => st.user?.counterId);
   const officers = counters.filter(c => c.officerName);
 
   return (
     <div className="flex flex-col gap-5">
       <div>
         <h1 className="text-[22px] font-black text-slate-900 tracking-tight">Officers On Duty</h1>
-        <p className="text-[13px] text-slate-500 mt-0.5">Rajkot District Office · {officers.length} officers assigned</p>
+        <p className="text-[13px] text-slate-500 mt-0.5">{office?.name ?? ''} · {officers.length} officers assigned</p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -18,7 +22,7 @@ export default function OfficerOfficersPage() {
           const statusColor = c.status === 'ACTIVE' ? 'bg-emerald-500' : c.status === 'PAUSED' ? 'bg-amber-500' : 'bg-slate-400';
           const statusText  = c.status === 'ACTIVE' ? 'text-emerald-600' : c.status === 'PAUSED' ? 'text-amber-600' : 'text-slate-500';
           const statusLabel = c.status === 'ACTIVE' ? 'Active' : c.status === 'PAUSED' ? 'Paused' : 'Off duty';
-          const isMe = c.id === 'ctr-001';
+          const isMe = c.id === myCounterId;
           const avgMin = Math.floor((c.avgServiceSeconds ?? 0) / 60);
           const avgSec = (c.avgServiceSeconds ?? 0) % 60;
 
@@ -36,7 +40,7 @@ export default function OfficerOfficersPage() {
                       {c.officerName}
                       {isMe && <span className="ml-2 text-[10px] font-bold text-red-500 bg-red-100 px-1.5 py-0.5 rounded-full">YOU</span>}
                     </div>
-                    <div className="text-[12px] text-slate-400 mt-0.5">{c.name}</div>
+                    <div className="text-[12px] text-slate-400 mt-0.5">{c.name} · {c.serviceName ?? 'All services'}</div>
                   </div>
                 </div>
                 <div className={`flex items-center gap-1.5 text-[11.5px] font-bold ${statusText}`}>
@@ -51,10 +55,6 @@ export default function OfficerOfficersPage() {
                     <div>
                       <div className="text-[10.5px] text-slate-400 font-semibold uppercase tracking-wide">Serving</div>
                       <div className="text-[18px] font-black text-slate-900">{c.currentTokenDisplay}</div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-[10.5px] text-slate-400 font-semibold uppercase tracking-wide">Citizen</div>
-                      <div className="text-[12.5px] font-bold text-slate-700">{c.currentCitizenName}</div>
                     </div>
                   </div>
                 ) : (

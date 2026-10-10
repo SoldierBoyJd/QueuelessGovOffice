@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { ChevronLeft, CheckCircle2, Loader2, Circle, Users, Clock, Hash, ArrowRight } from 'lucide-react';
-import { useDemoStore } from '../../stores/demoStore';
+import { useLiveStore } from '../../stores/liveStore';
 
 const STATUS_CONFIG: Record<string, { icon: React.ReactNode; label: string; cls: string }> = {
   COMPLETED: { icon: <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />, label: 'Completed', cls: 'text-emerald-600 bg-emerald-50 border-emerald-200/60' },
@@ -13,7 +13,7 @@ const STATUS_CONFIG: Record<string, { icon: React.ReactNode; label: string; cls:
 
 export default function OfficerLiveQueuePage() {
   const navigate = useNavigate();
-  const { queue } = useDemoStore();
+  const { queue } = useLiveStore();
 
   return (
     <div className="flex flex-col gap-4">

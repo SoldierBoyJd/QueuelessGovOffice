@@ -3,8 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { Building2, Users, Clock, AlertTriangle, ChevronRight } from 'lucide-react';
 import { MapContainer, TileLayer, CircleMarker, Popup } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
-import { MOCK_OFFICE_SUMMARIES, MOCK_REGION_SUMMARIES } from '../../mock/data';
 import type { CongestionLevel } from '../../types';
+import { useCentralData } from '../../hooks/useCentralData';
+import { LoadingState } from '../../components/ui/LoadingState';
+import { ErrorState } from '../../components/ui/ErrorState';
+import { parseApiError } from '../../services/api/client';
 
 const CONG_COLOR: Record<CongestionLevel, string> = {
   NORMAL: '#2f7d57',
@@ -18,18 +21,23 @@ const CONG_STYLE: Record<CongestionLevel, string> = {
 };
 
 export default function CentralDashboardPage() {
+  const { offices, regions, overview, isLoading, error, refetch } = useCentralData();
   const [mapReady, setMapReady] = useState(false);
   const [, setSelectedOffice] = useState<string | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => { setMapReady(true); }, []);
 
+  const highCount = overview?.congestion.HIGH ?? 0;
   const topMetrics = [
-    { label: 'Offices Monitored', value: '4,821', icon: <Building2 className="w-4 h-4" />, color: 'text-slate-600', bg: 'bg-slate-50' },
-    { label: 'Citizens Waiting',  value: '38,291',icon: <Users className="w-4 h-4" />,    color: 'text-blue-600',  bg: 'bg-blue-50' },
-    { label: 'Average Wait',      value: '27 min', icon: <Clock className="w-4 h-4" />,    color: 'text-amber-600', bg: 'bg-amber-50' },
-    { label: 'High Congestion',   value: '127',    icon: <AlertTriangle className="w-4 h-4" />, color: 'text-red-600', bg: 'bg-red-50' },
+    { label: 'Offices Monitored', value: String(overview?.officeCount ?? 0), icon: <Building2 className="w-4 h-4" />, color: 'text-slate-600', bg: 'bg-slate-50' },
+    { label: 'Citizens Waiting',  value: (overview?.totalWaiting ?? 0).toLocaleString(), icon: <Users className="w-4 h-4" />, color: 'text-blue-600', bg: 'bg-blue-50' },
+    { label: 'Average Wait',      value: overview?.avgWaitMinutes != null ? `${overview.avgWaitMinutes} min` : '—', icon: <Clock className="w-4 h-4" />, color: 'text-amber-600', bg: 'bg-amber-50' },
+    { label: 'High Congestion',   value: String(highCount), icon: <AlertTriangle className="w-4 h-4" />, color: 'text-red-600', bg: 'bg-red-50' },
   ];
+
+  if (isLoading) return <LoadingState message="Loading network data…" />;
+  if (error) return <ErrorState message={parseApiError(error).message} onRetry={refetch} />;
 
   return (
     <div className="flex flex-col gap-5">
@@ -39,8 +47,8 @@ export default function CentralDashboardPage() {
           <h1 className="text-[22px] font-black text-slate-900 tracking-tight">National Overview</h1>
           <p className="text-[13px] text-slate-500 mt-0.5">
             Live government service intelligence ·{' '}
-            <span className="inline-flex items-center gap-1 text-amber-600 font-semibold">
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-500" /> DEMO DATA
+            <span className="inline-flex items-center gap-1 text-emerald-600 font-semibold">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" /> LIVE
             </span>
           </p>
         </div>
@@ -84,7 +92,7 @@ export default function CentralDashboardPage() {
                   url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                   attribution="© OpenStreetMap contributors"
                 />
-                {MOCK_OFFICE_SUMMARIES.map(office => (
+                {offices.filter(o => o.lat && o.lng).map(office => (
                   <CircleMarker
                     key={office.id}
                     center={[office.lat, office.lng]}
@@ -128,10 +136,9 @@ export default function CentralDashboardPage() {
           <div className="bg-white/95 backdrop-blur-md rounded-[24px] border border-slate-100/90 shadow-[0_4px_24px_rgba(0,0,0,0.03)] p-5 flex-1">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-[14.5px] font-bold text-slate-900">Regional Summary</h3>
-              <span className="text-[11px] font-semibold text-amber-600 bg-amber-50 border border-amber-200/80 px-2 py-0.5 rounded-full">DEMO</span>
             </div>
             <div className="space-y-2">
-              {MOCK_REGION_SUMMARIES.map(r => (
+              {regions.map(r => (
                 <div key={r.id}
                   className="flex items-center justify-between px-3 py-2.5 rounded-xl hover:bg-slate-50/60 transition-colors cursor-pointer group"
                   onClick={() => navigate('/central/offices')}
@@ -162,7 +169,7 @@ export default function CentralDashboardPage() {
               <h3 className="text-[13.5px] font-bold text-red-800">High Congestion Offices</h3>
             </div>
             <div className="space-y-2">
-              {MOCK_OFFICE_SUMMARIES.filter(o => o.congestion === 'HIGH').slice(0, 3).map(o => (
+              {offices.filter(o => o.congestion === 'HIGH').slice(0, 3).map(o => (
                 <div key={o.id} className="flex items-center justify-between px-3 py-2 rounded-xl bg-red-50/50">
                   <div>
                     <div className="text-[12.5px] font-bold text-red-900">{o.name}</div>
@@ -180,7 +187,7 @@ export default function CentralDashboardPage() {
       <div className="bg-white/95 backdrop-blur-md rounded-[24px] border border-slate-100/90 shadow-[0_4px_24px_rgba(0,0,0,0.03)] p-5">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-[14.5px] font-bold text-slate-900">All Monitored Offices</h3>
-          <span className="text-[12px] text-slate-400">{MOCK_OFFICE_SUMMARIES.length} offices</span>
+          <span className="text-[12px] text-slate-400">{offices.length} offices</span>
         </div>
 
         {/* Desktop table */}
@@ -194,7 +201,7 @@ export default function CentralDashboardPage() {
               <div className="col-span-2 text-right">Status</div>
             </div>
             <div className="divide-y divide-slate-50">
-              {MOCK_OFFICE_SUMMARIES.map(o => (
+              {offices.map(o => (
                 <div key={o.id} className="grid grid-cols-12 min-w-[560px] items-center px-2 py-3 hover:bg-slate-50/50 transition-colors cursor-pointer" onClick={() => navigate('/central/offices')}>
                   <div className="col-span-4">
                     <div className="text-[13px] font-bold text-slate-900 truncate">{o.name}</div>
@@ -214,7 +221,7 @@ export default function CentralDashboardPage() {
 
         {/* Mobile card list */}
         <div className="sm:hidden space-y-2">
-          {MOCK_OFFICE_SUMMARIES.map(o => (
+          {offices.map(o => (
             <div key={o.id} className="flex items-center justify-between p-3 rounded-xl bg-slate-50/60 border border-slate-100 cursor-pointer hover:bg-slate-100/60 transition-colors" onClick={() => navigate('/central/offices')}>
               <div className="min-w-0 flex-1">
                 <div className="text-[13px] font-bold text-slate-900 truncate">{o.name}</div>

@@ -3,14 +3,18 @@ import { useNavigate, Link } from 'react-router-dom';
 import { Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { Logo } from '../components/Logo';
 import { SilkBackground } from '../components/SilkBackground';
-import { useAuthStore, DEMO_USERS, DEFAULT_ROUTE_FOR_ROLE } from '../stores/authStore';
+import { useAuthStore, DEFAULT_ROUTE_FOR_ROLE } from '../stores/authStore';
+import { authApi } from '../services/api/auth';
+import { parseApiError } from '../services/api/client';
 
+// Accounts created by `backend/scripts/seed_demo.py`. Shown in dev builds only.
+const DEMO_PASSWORD = 'DemoPass#2026';
 const DEMO_CREDENTIALS = [
-  { label: 'Citizen',      email: 'jainam.doshi@gmail.com',      key: 'citizen',       role: 'CITIZEN' },
-  { label: 'Officer',      email: 'priya.sharma@gov.in',          key: 'officer',       role: 'OFFICER' },
-  { label: 'Office Admin', email: 'aditi.mehta@gov.in',           key: 'office_admin',  role: 'OFFICE_ADMIN' },
-  { label: 'Central Admin',email: 'vikram.nair@nic.in',           key: 'central_admin', role: 'CENTRAL_ADMIN' },
-  { label: 'Super Admin',  email: 'admin@skiptheline.gov.in',     key: 'super_admin',   role: 'SUPER_ADMIN' },
+  { label: 'Citizen',       email: 'citizen@demo.skiptheline.test' },
+  { label: 'Officer',       email: 'officer@demo.skiptheline.test' },
+  { label: 'Office Admin',  email: 'admin@demo.skiptheline.test' },
+  { label: 'Central Admin', email: 'central@demo.skiptheline.test' },
+  { label: 'Super Admin',   email: 'super@demo.skiptheline.test' },
 ];
 
 export default function LoginPage() {
@@ -22,30 +26,26 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const signIn = async (em: string, pw: string) => {
     setError('');
     setLoading(true);
-
-    await new Promise((r) => setTimeout(r, 600));
-
-    const match = DEMO_CREDENTIALS.find((c) => c.email === email.trim());
-    if (!match || password !== 'demo1234') {
-      setError('Invalid email or password. Use demo credentials below.');
+    try {
+      const { user, token } = await authApi.login({ email: em.trim(), password: pw });
+      login(user, token);
+      navigate(DEFAULT_ROUTE_FOR_ROLE[user.role], { replace: true });
+    } catch (err) {
+      setError(parseApiError(err).message);
+    } finally {
       setLoading(false);
-      return;
     }
-
-    const user = DEMO_USERS[match.key];
-    login(user, 'demo-token-' + match.key);
-    navigate(DEFAULT_ROUTE_FOR_ROLE[user.role]);
   };
 
-  const quickLogin = (key: string) => {
-    const user = DEMO_USERS[key];
-    login(user, 'demo-token-' + key);
-    navigate(DEFAULT_ROUTE_FOR_ROLE[user.role]);
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    void signIn(email, password);
   };
+
+  const quickLogin = (em: string) => { void signIn(em, DEMO_PASSWORD); };
 
   return (
     <div className="min-h-screen bg-[#f4f6fa] flex items-center justify-center p-3 sm:p-4 relative overflow-hidden">
@@ -124,16 +124,17 @@ export default function LoginPage() {
           </p>
         </div>
 
-        {/* Demo Quick Login */}
-        <div className="mt-5 liquid-glass-card rounded-[24px] p-5">
+        {/* Demo Quick Login (dev builds only) */}
+        {import.meta.env.DEV && <div className="mt-5 liquid-glass-card rounded-[24px] p-5">
           <p className="text-[11.5px] font-bold text-slate-400 uppercase tracking-wider mb-3">
             Demo — Quick Login
           </p>
           <div className="grid grid-cols-1 gap-1.5">
             {DEMO_CREDENTIALS.map((cred) => (
               <button
-                key={cred.key}
-                onClick={() => quickLogin(cred.key)}
+                key={cred.email}
+                onClick={() => quickLogin(cred.email)}
+                disabled={loading}
                 className="flex items-center justify-between px-3.5 py-2.5 rounded-xl hover:bg-white/80 border border-transparent hover:border-slate-200/80 transition-all group"
               >
                 <div className="flex items-center gap-2.5">
@@ -149,8 +150,8 @@ export default function LoginPage() {
               </button>
             ))}
           </div>
-          <p className="text-[11px] text-slate-400 mt-3 text-center">Password for manual login: <span className="font-bold text-slate-600">demo1234</span></p>
-        </div>
+          <p className="text-[11px] text-slate-400 mt-3 text-center">Seeded by <span className="font-bold text-slate-600">backend/scripts/seed_demo.py</span></p>
+        </div>}
       </div>
     </div>
   );

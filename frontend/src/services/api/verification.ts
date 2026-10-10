@@ -1,22 +1,24 @@
 import { apiClient } from './client';
-import type { VerificationApplication, VerificationStatus } from '../../types';
-import { MOCK_VERIFICATION } from '../../mock/data';
+import { toVerification } from './adapters';
+import type { VerificationApplication } from '../../types';
 
-const DEMO = import.meta.env.VITE_DEMO_MODE === 'true';
+export type Decision = 'APPROVE' | 'REJECT' | 'MORE_INFO';
 
 export const verificationApi = {
-  get: async (id: string): Promise<VerificationApplication> => {
-    if (DEMO) return { ...MOCK_VERIFICATION, id };
-    return apiClient.get<VerificationApplication>(`/verification/${id}`).then(r => r.data);
+  get: (id: string): Promise<VerificationApplication> =>
+    apiClient.get(`/verification/applications/${id}`).then(r => toVerification(r.data)),
+
+  list: async (status?: string): Promise<VerificationApplication[]> => {
+    const { data } = await apiClient.get('/verification/applications', {
+      params: { limit: 100, ...(status ? { status } : {}) },
+    });
+    return data.items.map(toVerification);
   },
 
-  list: async (): Promise<VerificationApplication[]> => {
-    if (DEMO) return [MOCK_VERIFICATION];
-    return apiClient.get<VerificationApplication[]>('/verification').then(r => r.data);
-  },
+  startReview: (id: string) =>
+    apiClient.post(`/verification/applications/${id}/start-review`).then(r => toVerification(r.data)),
 
-  decide: async (id: string, decision: VerificationStatus, note?: string): Promise<void> => {
-    if (DEMO) return;
-    await apiClient.post(`/verification/${id}/decide`, { decision, note });
-  },
+  decide: (id: string, decision: Decision, note?: string) =>
+    apiClient.post(`/verification/applications/${id}/decision`, { decision, ...(note ? { note } : {}) })
+      .then(r => toVerification(r.data)),
 };
