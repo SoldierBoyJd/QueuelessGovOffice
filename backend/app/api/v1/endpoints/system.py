@@ -10,6 +10,7 @@ from app.core.config import settings
 from app.db.models import PredictionSnapshot, Token, User
 from app.domain.token_states import Role
 from app.realtime.manager import manager
+from app.ml import eta_model
 from app.services import eta_service
 from app.services.timeutil import utcnow
 
@@ -36,8 +37,13 @@ def system_health(db: DbSession, user: SuperUser):
                        "last_checked": now})
     components.append({"name": "ETA engine (baseline)", "status": "HEALTHY", "latency_ms": None,
                        "detail": "Scheduling simulation", "last_checked": now})
-    components.append({"name": "ML ETA model", "status": "NOT_CONFIGURED", "latency_ms": None,
-                       "detail": "No trained model is deployed; the baseline estimator is used.", "last_checked": now})
+    if eta_model.available():
+        components.append({"name": "ML ETA model", "status": "HEALTHY", "latency_ms": None,
+                           "detail": f"{eta_model.version()} loaded (trained on synthetic data)", "last_checked": now})
+    else:
+        components.append({"name": "ML ETA model", "status": "NOT_CONFIGURED", "latency_ms": None,
+                           "detail": "No trained model is deployed; the baseline estimator is used.",
+                           "last_checked": now})
     components.append({"name": "OCR / document analysis", "status": "NOT_CONFIGURED", "latency_ms": None,
                        "detail": "Not implemented", "last_checked": now})
     overall = "DOWN" if any(c["status"] == "DOWN" for c in components) else (
@@ -47,28 +53,38 @@ def system_health(db: DbSession, user: SuperUser):
 
 @router.get("/models", response_model=dict)
 def models(db: DbSession, user: SuperUser):
-    """ETA methods in use. Accuracy is measured from real data: each token's ETA at creation is compared with
-    its actual wait. Nothing is reported when there are no completed observations."""
+    """ETA methods in use. Live error is measured from real data: each token's ETA at creation is compared with
+    its actual wait. The ML model's offline benchmark (synthetic data, unseen offices) comes from metrics.json."""
     actual = func.extract("epoch", Token.service_started_at - Token.created_at) / 60.0
     err = func.abs(PredictionSnapshot.predicted_wait_minutes - actual)
-    n, mae, median, coverage = db.execute(
-        select(func.count(), func.avg(err), func.percentile_cont(0.5).within_group(err),
-               func.avg(case((actual.between(PredictionSnapshot.lower_minutes, PredictionSnapshot.upper_minutes), 1),
-                             else_=0)))
-        .select_from(PredictionSnapshot).join(Token, Token.id == PredictionSnapshot.token_id)
-        .where(PredictionSnapshot.method == "BASELINE", Token.service_started_at.is_not(None))).one()
-    evaluation = {
-        "sample_size": n,
-        "mean_absolute_error_minutes": round(float(mae), 2) if mae is not None else None,
-        "median_absolute_error_minutes": round(float(median), 2) if median is not None else None,
-        "range_coverage": round(float(coverage), 3) if coverage is not None else None,
-    }
-    return {"items": [
+
+    def live(method: str) -> dict:
+        n, mae, median, coverage = db.execute(
+            select(func.count(), func.avg(err), func.percentile_cont(0.5).within_group(err),
+                   func.avg(case((actual.between(PredictionSnapshot.lower_minutes, PredictionSnapshot.upper_minutes),
+                                  1), else_=0)))
+            .select_from(PredictionSnapshot).join(Token, Token.id == PredictionSnapshot.token_id)
+            .where(PredictionSnapshot.method == method, Token.service_started_at.is_not(None))).one()
+        return {
+            "sample_size": n,
+            "mean_absolute_error_minutes": round(float(mae), 2) if mae is not None else None,
+            "median_absolute_error_minutes": round(float(median), 2) if median is not None else None,
+            "range_coverage": round(float(coverage), 3) if coverage is not None else None,
+        }
+
+    benchmark = eta_model.metrics()
+    ml_on = eta_model.available()
+    items = [
         {"id": "baseline-eta-simulator", "name": "Baseline ETA simulator", "version": eta_service.METHOD,
-         "status": "ACTIVE", "accuracy": None, "evaluation": evaluation, "last_trained": None,
-         "description": "FIFO scheduling simulation over eligible counters. Not a trained model; error metrics are "
-                        "measured against actual waits and are not a percentage accuracy."},
-        {"id": "xgboost-eta", "name": "XGBoost ETA model", "version": None, "status": "INACTIVE",
-         "accuracy": None, "evaluation": None, "last_trained": None,
-         "description": "Not trained or deployed. Requires enough real queue history and must beat the baseline."},
-    ], "generated_at": utcnow().isoformat()}
+         "status": "INACTIVE" if ml_on else "ACTIVE", "accuracy": None, "evaluation": live("BASELINE"),
+         "benchmark": None, "last_trained": None,
+         "description": "FIFO scheduling simulation over eligible counters using observed service times. Used as "
+                        "the fallback and as an input to the ML model. Not a trained model."},
+        {"id": "hgb-eta", "name": "Gradient-boosted wait-time model", "version": eta_model.version(),
+         "status": "ACTIVE" if ml_on else "INACTIVE", "accuracy": None, "evaluation": live("ML") if ml_on else None,
+         "benchmark": benchmark, "last_trained": benchmark.get("trained_at") if benchmark else None,
+         "description": "Learns the correction to the baseline from queue length, counters, service type and time "
+                        "of day, with a 10th-90th percentile interval. Trained on synthetic data until real queue "
+                        "history exists; benchmark numbers come from offices unseen in training."},
+    ]
+    return {"items": items, "generated_at": utcnow().isoformat()}

@@ -1,0 +1,14 @@
+{
+  "name": "SkipTheLine",
+  "short_name": "SkipTheLine",
+  "description": "Take a virtual token, see your predicted wait, and arrive only when your turn is near.",
+  "start_url": "/citizen/home",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f4f6fa",
+  "theme_color": "#dc2626",
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/SkipTheLine.jpeg", "sizes": "512x512", "type": "image/jpeg" }
+  ]
+}

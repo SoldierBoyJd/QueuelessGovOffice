@@ -147,7 +147,7 @@ export default function SuperAdminDashboardPage() {
                   </div>
                   <div className="text-[11.5px] text-slate-500 font-mono">{m.version}</div>
                   <div className="flex items-center gap-3 mt-2">
-                    {m.status === 'ACTIVE' && modelsQ.data?.evaluation?.mean_absolute_error_minutes != null && <span className="text-[11.5px] text-slate-500">Mean error: <strong className="text-slate-700">{modelsQ.data.evaluation.mean_absolute_error_minutes} min</strong></span>}
+                    {m.evaluation?.mean_absolute_error_minutes != null && <span className="text-[11.5px] text-slate-500">Live error: <strong className="text-slate-700">{m.evaluation.mean_absolute_error_minutes} min</strong></span>}
                     <span className="text-[11.5px] text-slate-400">
                       <Clock className="w-3 h-3 inline mr-1" />
                       {Number.isNaN(new Date(m.lastTrained).getTime()) ? 'Not trained' : `Trained ${new Date(m.lastTrained).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}`}

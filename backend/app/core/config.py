@@ -27,6 +27,7 @@ class Settings(BaseSettings):
     enforce_office_hours: bool = True
     arrival_buffer_minutes: int = 10
     turn_approaching_threshold: int = 3
+    eta_ml_enabled: bool = True  # use the trained wait-time model when its artifact is present
     eta_min_samples: int = 5
     eta_history_days: int = 14
     eta_lower_factor: float = 0.75

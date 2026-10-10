@@ -86,6 +86,9 @@ export interface Prediction {
   lowerBoundMinutes: number;
   upperBoundMinutes: number;
   modelVersion: string;
+  /** Raw timestamps (ISO) behind the formatted times, used for leave-now reminders. */
+  serviceAtIso?: string;
+  arriveByIso?: string;
 }
 
 export interface Token {
@@ -306,4 +309,27 @@ export interface AIModel {
   accuracy?: number;
   lastTrained: string;
   description: string;
+  /** Error measured on real tokens (ETA at creation vs actual wait). */
+  evaluation?: ModelEvaluation | null;
+  /** Offline benchmark on held-out synthetic offices (ML model only). */
+  benchmark?: ModelBenchmark | null;
+}
+
+export interface ModelEvaluation {
+  sample_size: number;
+  mean_absolute_error_minutes: number | null;
+  median_absolute_error_minutes: number | null;
+  range_coverage: number | null;
+}
+
+export interface ModelBenchmark {
+  data: string;
+  baseline_mae_minutes: number;
+  ml_mae_minutes: number;
+  mae_improvement_pct: number;
+  ml_interval_coverage: number;
+  baseline_interval_coverage: number;
+  train_rows: number;
+  test_rows: number;
+  interval: string;
 }

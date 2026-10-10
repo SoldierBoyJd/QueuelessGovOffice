@@ -244,7 +244,8 @@ def create_token(session: Session, citizen: User, *, office_id: uuid.UUID, servi
         session.add(PredictionSnapshot(
             office_id=office.id, service_id=service.id, token_id=token.id,
             predicted_wait_minutes=eta.estimated_wait_minutes, lower_minutes=eta.lower_minutes,
-            upper_minutes=eta.upper_minutes, queue_position=eta.queue_position, method="BASELINE"))
+            upper_minutes=eta.upper_minutes, queue_position=eta.queue_position, method=eta.method.upper(),
+            model_version=eta.model_version))
     notification_service.notify(
         session, user_id=citizen.id, type_="TOKEN_CREATED", severity="SUCCESS", title="Token booked",
         message=f"Your token {token.display_number} for {service.name} is confirmed. Position {eta.queue_position}.",

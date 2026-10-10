@@ -130,6 +130,8 @@ export function toToken(t: Raw, user?: Pick<User, 'id' | 'name'> | null): Token 
       lowerBoundMinutes: eta.lower_minutes ?? wait ?? 0,
       upperBoundMinutes: eta.upper_minutes ?? wait ?? 0,
       modelVersion: eta.model_version ?? eta.method ?? 'baseline',
+      serviceAtIso: (t.estimated_service_at ?? eta.estimated_service_at) ?? undefined,
+      arriveByIso: (t.arrive_by ?? eta.arrive_by) ?? undefined,
     },
   };
 }
@@ -260,6 +262,7 @@ export function toModel(m: Raw): AIModel {
     id: m.id, name: m.name, version: m.version ?? 'n/a',
     status: (m.status === 'ACTIVE' || m.status === 'TRAINING' ? m.status : 'INACTIVE') as AIModel['status'],
     accuracy: m.accuracy ?? undefined, lastTrained: m.last_trained ?? '—', description: m.description,
+    evaluation: m.evaluation ?? null, benchmark: m.benchmark ?? null,
   };
 }
 

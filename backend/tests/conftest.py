@@ -31,6 +31,7 @@ os.environ["JWT_SECRET_KEY"] = "test-secret-test-secret-test-secret-123456"
 os.environ["RATE_LIMIT_ENABLED"] = "false"
 os.environ["ENFORCE_OFFICE_HOURS"] = "false"
 os.environ["LOG_LEVEL"] = "WARNING"
+os.environ["ETA_ML_ENABLED"] = "false"  # existing tests pin the baseline estimator; test_eta_model covers ML
 
 import pytest  # noqa: E402
 from alembic import command  # noqa: E402

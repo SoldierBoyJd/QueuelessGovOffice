@@ -54,6 +54,6 @@ export const adminApi = {
 
   models: async (): Promise<{ models: AIModel[]; evaluation: ModelEvaluation | null }> => {
     const { data } = await apiClient.get('/admin/models');
-    return { models: data.items.map(toModel), evaluation: data.items[0]?.evaluation ?? null };
+    return { models: data.items.map(toModel), evaluation: null };
   },
 };

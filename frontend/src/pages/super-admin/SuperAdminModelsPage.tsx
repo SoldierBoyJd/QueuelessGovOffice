@@ -13,7 +13,6 @@ const fmtTrained = (v: string) => {
 export default function SuperAdminModelsPage() {
   const { data, isLoading, error, refetch } = useQuery({ queryKey: ['admin', 'models'], queryFn: adminApi.models, refetchInterval: 60_000 });
   const MODELS = data?.models ?? [];
-  const evaluation = data?.evaluation;
 
   if (isLoading) return <LoadingState />;
   if (error) return <ErrorState message={parseApiError(error).message} onRetry={() => void refetch()} />;
@@ -47,11 +46,26 @@ export default function SuperAdminModelsPage() {
             <div className="text-[11.5px] font-mono text-slate-400 mb-3">{m.version}</div>
             <p className="text-[12px] text-slate-500 leading-relaxed flex-1">{m.description}</p>
 
+            {m.benchmark && (
+              <div className="mt-4 rounded-2xl bg-emerald-50/60 border border-emerald-200/60 p-3.5">
+                <div className="text-[10.5px] font-bold text-emerald-700 uppercase tracking-wide mb-2">Benchmark · unseen offices</div>
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  <div><div className="text-[15px] font-black text-slate-900">{m.benchmark.baseline_mae_minutes}m</div><div className="text-[10px] text-slate-500">Baseline error</div></div>
+                  <div><div className="text-[15px] font-black text-emerald-700">{m.benchmark.ml_mae_minutes}m</div><div className="text-[10px] text-slate-500">ML error</div></div>
+                  <div><div className="text-[15px] font-black text-emerald-700">−{m.benchmark.mae_improvement_pct}%</div><div className="text-[10px] text-slate-500">Error</div></div>
+                </div>
+                <p className="text-[10.5px] text-slate-500 mt-2">
+                  {Math.round(m.benchmark.ml_interval_coverage * 100)}% of real waits fell inside the predicted range (baseline range: {Math.round(m.benchmark.baseline_interval_coverage * 100)}%).
+                  Synthetic data · {m.benchmark.test_rows.toLocaleString()} test tokens.
+                </p>
+              </div>
+            )}
+
             <div className="mt-4 pt-4 border-t border-slate-100 grid grid-cols-2 gap-3">
-              {evaluation && m.status === 'ACTIVE' && evaluation.mean_absolute_error_minutes != null && (
+              {m.evaluation && m.evaluation.mean_absolute_error_minutes != null && (
                 <div className="bg-slate-50/80 rounded-xl p-2.5">
                   <div className="flex items-center gap-1 mb-1"><TrendingUp className="w-3.5 h-3.5 text-slate-400" /><span className="text-[10.5px] text-slate-400 font-semibold uppercase">Mean error</span></div>
-                  <div className="text-[16px] font-black text-slate-900">{evaluation?.mean_absolute_error_minutes} min</div>
+                  <div className="text-[16px] font-black text-slate-900">{m.evaluation?.mean_absolute_error_minutes} min</div>
                 </div>
               )}
               <div className="bg-slate-50/80 rounded-xl p-2.5">
@@ -81,7 +95,7 @@ export default function SuperAdminModelsPage() {
             <div key={m.id} className="grid grid-cols-12 min-w-[560px] items-center px-2 py-3.5 hover:bg-slate-50/50 transition-colors">
               <div className="col-span-3 font-bold text-[13px] text-slate-900">{m.name}</div>
               <div className="col-span-3 font-mono text-[12px] text-slate-500">{m.version}</div>
-              <div className="col-span-2 text-right font-black text-[13px] text-slate-900">{m.status === 'ACTIVE' && evaluation?.mean_absolute_error_minutes != null ? `±${evaluation.mean_absolute_error_minutes}m` : '—'}</div>
+              <div className="col-span-2 text-right font-black text-[13px] text-slate-900">{m.evaluation?.mean_absolute_error_minutes != null ? `±${m.evaluation.mean_absolute_error_minutes}m` : '—'}</div>
               <div className="col-span-2 text-right text-[12px] text-slate-500">
                 {fmtTrained(m.lastTrained)}
               </div>

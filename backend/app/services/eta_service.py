@@ -15,9 +15,11 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
+from app.ml import eta_model
+from app.ml.features import feature_row
 from app.db.models import Counter, Office, Service, Token
 from app.domain.token_states import COUNTER_HOLDING_STATES, CounterStatus, TokenStatus
-from app.services.timeutil import closes_at, is_within_hours, office_local_date, utcnow
+from app.services.timeutil import closes_at, is_within_hours, office_local_date, office_tz, utcnow
 
 METHOD = "baseline"
 RANGE_POLICY = "configured_factor"
@@ -132,10 +134,17 @@ def simulate_office(session: Session, office: Office, *, virtual_service_id: uui
     seen_per_service: dict[uuid.UUID, int] = {}
     etas: dict[uuid.UUID, EtaResult] = {}
     virtual: EtaResult | None = None
+    ml_inputs: list[tuple[EtaResult, list[float]]] = []
+    ml_inputs_seen: list[uuid.UUID] = []
+    local = now.astimezone(office_tz(office))
+    in_service = len(active_tokens)
+    paused = sum(1 for c in counters if c.status == CounterStatus.PAUSED.value)
 
     for token_id, service_id in queue:
+        ahead_total = len(ml_inputs_seen)
         position = seen_per_service.get(service_id, 0) + 1
         seen_per_service[service_id] = position
+        ml_inputs_seen.append(service_id)
         res = EtaResult(token_id=token_id, service_id=service_id, queue_position=position, status="OK",
                         basis=basis.get(service_id, "configured"), generated_at=now)
 
@@ -155,16 +164,42 @@ def simulate_office(session: Session, office: Office, *, virtual_service_id: uui
             res.lower_minutes, res.upper_minutes = _range(wait)
             if close_instant is not None and start > close_instant:
                 res.warnings.append("ESTIMATE_AFTER_CLOSING_TIME")
+            ml_inputs.append((res, feature_row(
+                ahead_same=position - 1, ahead_total=ahead_total, in_service=in_service, eligible=len(usable),
+                active=len(eligible_counters), total=len(counters), paused=paused,
+                avg_min=avg.get(service_id, default_minutes), baseline_wait=wait,
+                hour=local.hour + local.minute / 60.0, weekday=local.weekday())))
         if token_id is None:
             virtual = res
         else:
             etas[token_id] = res
+
+    _apply_ml(ml_inputs, now)
 
     return OfficeSimulation(
         etas=etas, virtual=virtual, waiting_count=len(waiting),
         active_counters=len(eligible_counters), total_counters=len(counters),
         avg_minutes=avg, generated_at=now,
     )
+
+
+def _apply_ml(items: list[tuple[EtaResult, list[float]]], now: datetime) -> None:
+    """Replace the baseline wait with the trained model's estimate (and interval) when a model is available."""
+    if not items:
+        return
+    preds = eta_model.predict([row for _, row in items])
+    if preds is None:
+        return
+    for (res, _), (mean, lo, hi) in zip(items, preds):
+        wait = max(0, math.ceil(mean - 1e-9))
+        res.estimated_wait_minutes = wait
+        res.estimated_service_at = now + timedelta(minutes=wait)
+        res.arrive_by = max(now, res.estimated_service_at - timedelta(minutes=settings.arrival_buffer_minutes))
+        res.lower_minutes, res.upper_minutes = int(math.floor(lo)), max(int(math.ceil(hi)), wait)
+        res.method = "ml"
+        res.model_version = eta_model.version()
+        res.confidence = eta_model.coverage()
+        res.range_policy = "model_quantiles_10_90"
 
 
 def eta_for_waiting_token(session: Session, office: Office, token: Token) -> EtaResult | None:

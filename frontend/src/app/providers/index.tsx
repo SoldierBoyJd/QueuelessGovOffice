@@ -5,6 +5,7 @@ import type { ReactNode } from 'react';
 import { useAuthStore } from '../../stores/authStore';
 import { useLiveStore } from '../../stores/liveStore';
 import { officeSocket } from '../../services/websocket/WebSocketService';
+import { alertUser, getTravelMinutes, registerServiceWorker } from '../../services/alerts';
 
 export const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 15_000, retry: 1, refetchOnWindowFocus: true } },
@@ -76,11 +77,52 @@ function LiveSync() {
   return null;
 }
 
+/**
+ * Citizen alerts: (1) a system notification for every new server notification (called, turn approaching ...),
+ * (2) a "leave now" reminder when the recommended arrival time minus the citizen's travel time is reached.
+ */
+function CitizenAlerts() {
+  const role = useAuthStore(s => s.user?.role);
+  const notifications = useLiveStore(s => s.notifications);
+  const token = useLiveStore(s => s.token);
+
+  useEffect(() => { void registerServiceWorker(); }, []);
+
+  useEffect(() => {
+    if (role !== 'CITIZEN') return;
+    const seenKey = 'stl-seen-notifs';
+    let seen: string[] = [];
+    try { seen = JSON.parse(sessionStorage.getItem(seenKey) ?? '[]') as string[]; } catch { /* ignore */ }
+    const fresh = notifications.filter(n => !n.read && !seen.includes(n.id) && Date.now() - new Date(n.timestamp).getTime() < 3 * 60_000);
+    // First load: remember everything silently so old notifications do not all fire at once.
+    const firstLoad = seen.length === 0 && sessionStorage.getItem(seenKey) === null;
+    if (!firstLoad) fresh.slice(0, 2).forEach(n => void alertUser(n.title, n.message, n.id));
+    try { sessionStorage.setItem(seenKey, JSON.stringify([...seen, ...notifications.map(n => n.id)].slice(-200))); } catch { /* ignore */ }
+  }, [notifications, role]);
+
+  useEffect(() => {
+    if (role !== 'CITIZEN' || !token || token.status !== 'WAITING' || !token.prediction.arriveByIso) return;
+    const leaveAt = new Date(token.prediction.arriveByIso).getTime() - getTravelMinutes() * 60_000;
+    const key = `stl-leave-${token.id}`;
+    const fire = () => {
+      try { if (sessionStorage.getItem(key)) return; sessionStorage.setItem(key, '1'); } catch { /* ignore */ }
+      void alertUser('Time to leave', `Token ${token.displayNumber}: leave now to reach ${token.officeName} before your turn.`, key);
+    };
+    const delay = leaveAt - Date.now();
+    if (delay <= 0) { if (delay > -10 * 60_000) fire(); return; }
+    const t = setTimeout(fire, Math.min(delay, 2 ** 31 - 1));
+    return () => clearTimeout(t);
+  }, [role, token?.id, token?.status, token?.prediction.arriveByIso]);
+
+  return null;
+}
+
 export function Providers({ children }: { children: ReactNode }) {
   return (
     <BrowserRouter>
       <QueryClientProvider client={queryClient}>
         <LiveSync />
+        <CitizenAlerts />
         {children}
       </QueryClientProvider>
     </BrowserRouter>

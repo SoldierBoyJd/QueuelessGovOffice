@@ -10,11 +10,11 @@ and see a wait estimate; officers run counters; admins monitor offices.
 | Auth (Argon2 passwords, JWT, server-side logout/deactivation revocation, roles, office scoping) | Implemented, tested |
 | Offices / services / counters, admin management, audit trail | Implemented, tested |
 | Token queue engine (atomic numbering, `call-next` with row locks, state machine, append-only event log) | Implemented, tested against real PostgreSQL incl. races |
-| Baseline ETA (FIFO scheduling simulation, observed service times, ranges) | Implemented, tested. `method` is always `"baseline"`, `confidence` is always `null` |
+| Baseline ETA (FIFO scheduling simulation, observed service times, ranges) | Implemented, tested. Used as fallback and as an input to the ML model; `method` is `"baseline"` and `confidence` is `null` when it is in use |
 | In-app notifications, WebSocket live updates | Implemented, tested (WebSocket is single-process, see limits) |
 | Analytics (office, central, regions, queue movement, historical-average forecast) | Implemented from stored tokens; returns `null`/`available:false` when there is no data |
 | Staff verification workflow (human decision, audit trail) | Implemented; findings are simple rule checks, **no OCR / AI** |
-| ML ETA (XGBoost) | **Not implemented.** The registry endpoint reports it `INACTIVE` |
+| ML wait-time model (gradient boosting, `app/ml`) | Implemented. Trained on **synthetic** queue history (`scripts/train_eta_model.py`), benchmarked on unseen simulated offices, falls back to the baseline if the artifact is missing (`ETA_ML_ENABLED=false` disables it). Retrain on real tokens once they exist |
 | OCR / document analysis (`POST /documents/analyze`) | **Not implemented** |
 | SMS / email / push, password reset | **Not implemented** (in-app only) |
 
@@ -42,6 +42,8 @@ Then:
 ```bash
 alembic upgrade head              # create the schema
 python scripts/seed_demo.py --queue 6   # demo office/services/counters/accounts + a small live queue
+python scripts/train_eta_model.py        # trains the wait-time model on simulated offices (~3 min)
+python scripts/seed_history.py           # 4 weeks of simulated history for analytics/forecast/model benchmark
 uvicorn app.main:app --reload     # http://127.0.0.1:8000/docs , GET /api/v1/health
 pytest                            # runs against a bundled PostgreSQL (or TEST_DATABASE_URL)
 ```

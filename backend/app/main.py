@@ -11,6 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.v1.router import api_router
 from app.core.config import settings
 from app.core.errors import install_error_handlers
+from app.ml import eta_model
 from app.realtime.manager import manager
 
 logging.basicConfig(level=settings.log_level.upper(), format="%(asctime)s %(levelname)s %(name)s %(message)s")
@@ -21,6 +22,7 @@ _SAFE_REQUEST_ID = re.compile(r"^[A-Za-z0-9_.-]{8,64}$")
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     manager.bind_loop(asyncio.get_running_loop())
+    await asyncio.to_thread(eta_model.preload)
     yield
     manager.bind_loop(None)
 

@@ -1,0 +1,15 @@
+{
+  "version": "hgb-eta-v1",
+  "data": "synthetic (simulated offices); evaluated on offices not used for training",
+  "trained_at": "2026-10-10T09:03:20.903993+00:00",
+  "train_rows": 104557,
+  "test_rows": 30538,
+  "baseline_mae_minutes": 6.86,
+  "ml_mae_minutes": 4.53,
+  "baseline_median_abs_error": 3.2,
+  "ml_median_abs_error": 2.15,
+  "mae_improvement_pct": 34.0,
+  "ml_interval_coverage": 0.788,
+  "baseline_interval_coverage": 0.762,
+  "interval": "10th-90th percentile (nominal 80%)"
+}

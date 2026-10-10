@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MapPin, AlertTriangle, X, Info } from 'lucide-react';
+import { MapPin, AlertTriangle, X, Info, BellRing } from 'lucide-react';
+import { alertUser, enableNotifications, getTravelMinutes, notificationPermission, setTravelMinutes } from '../../services/alerts';
 import { useLiveStore } from '../../stores/liveStore';
 import { NoActiveToken } from '../../components/ui/EmptyState';
 import { LoadingState } from '../../components/ui/LoadingState';
@@ -11,6 +12,8 @@ export default function CitizenTokenPage() {
   const navigate = useNavigate();
   const { token, notifications, loaded, cancelToken } = useLiveStore();
   const [cancelling, setCancelling] = useState(false);
+  const [travel, setTravel] = useState(getTravelMinutes());
+  const [perm, setPerm] = useState(notificationPermission());
   const [showCancel, setShowCancel] = useState(false);
 
   if (!loaded) return <LoadingState />;
@@ -169,6 +172,46 @@ export default function CitizenTokenPage() {
           </div>
         </div>
       </div>
+
+      {/* Leave-now reminder */}
+      {token.status === 'WAITING' && (
+        <div className="bg-white/95 backdrop-blur-md rounded-[24px] border border-slate-100/90 shadow-[0_4px_24px_rgba(0,0,0,0.03)] p-5">
+          <div className="flex items-center gap-2 mb-3">
+            <BellRing className="w-4 h-4 text-red-600" />
+            <h3 className="text-[14.5px] font-bold text-slate-900">Leave-now reminder</h3>
+          </div>
+          <p className="text-[12.5px] text-slate-500 mb-3">
+            Stay at home until it is time. We will alert you when you need to leave, based on your travel time to the office.
+          </p>
+          <div className="flex flex-wrap items-end gap-3">
+            <label className="block">
+              <span className="block text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-1">Travel time (min)</span>
+              <input type="number" min={0} max={240} value={travel}
+                onChange={e => { const v = Number(e.target.value); setTravel(v); setTravelMinutes(v); }}
+                className="w-28 liquid-glass-search rounded-xl px-3 py-2 text-[13.5px] text-slate-800 outline-none font-medium" />
+            </label>
+            {token.prediction.arriveByIso && (
+              <div className="text-[13px] text-slate-700">
+                Leave by <strong>{new Date(new Date(token.prediction.arriveByIso).getTime() - travel * 60_000)
+                  .toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }).toUpperCase()}</strong>
+              </div>
+            )}
+            {perm !== 'granted' && perm !== 'unsupported' && (
+              <button onClick={async () => setPerm(await enableNotifications())}
+                className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-[12.5px] transition-colors">
+                Enable alerts
+              </button>
+            )}
+            {perm === 'granted' && (
+              <button onClick={() => void alertUser('Test alert', 'Alerts are working on this device.', 'stl-test')}
+                className="px-4 py-2 rounded-xl border border-slate-200 text-slate-700 font-bold text-[12.5px] hover:bg-slate-50">
+                Send test alert
+              </button>
+            )}
+          </div>
+          {perm === 'denied' && <p className="text-[11.5px] text-amber-700 mt-2">Notifications are blocked in your browser settings. Alerts will only beep while this page is open.</p>}
+        </div>
+      )}
 
       {/* Action buttons */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
