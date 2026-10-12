@@ -1,0 +1,12 @@
+.venv
+.pgdata
+.pytest_cache
+.ruff_cache
+__pycache__
+*.pyc
+.env
+.env.*
+!.env.example
+tests
+scripts
+*.egg-info

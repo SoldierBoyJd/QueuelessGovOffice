@@ -1,3 +1,5 @@
+import os
+
 from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -68,6 +70,10 @@ class Settings(BaseSettings):
     @property
     def is_dev(self) -> bool:
         return self.app_env.lower() in {"development", "test"}
+
+    @property
+    def on_vercel(self) -> bool:
+        return os.environ.get("VERCEL") == "1"
 
 
 settings = Settings()

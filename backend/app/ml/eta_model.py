@@ -50,7 +50,7 @@ def _bundle():
 
 
 def preload() -> None:
-    """Called at startup so the first request does not pay the scikit-learn import."""
+    """Called at startup so the first request does not pay the numpy artifact load."""
     if settings.eta_ml_enabled:
         _bundle()
 

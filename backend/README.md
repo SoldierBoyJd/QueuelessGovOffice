@@ -53,6 +53,57 @@ Demo accounts (synthetic, `*.test` addresses): `citizen@`, `citizen2@`, `officer
 `SEED_DEMO_PASSWORD`; it may be omitted **only** when `APP_ENV=development` (then the public dev default
 `DemoPass#2026` is used — never seed that into a shared database).
 
+## Deploy on Vercel (from Render)
+
+Current production shape: **frontend on Vercel**, **API on Render**, **Postgres on Neon**. Only the API moves. Neon and the frontend project stay. You do **not** need Render dashboard access: copy `DATABASE_URL` from the Neon console, pick a new `JWT_SECRET_KEY` if you cannot get the old one from whoever deployed Render (that only invalidates live JWTs — people sign in again; Neon rows are untouched). Never run `seed_demo.py` against this database.
+
+The API is FastAPI at `app/main.py`. Vercel detects that when the **project Root Directory is `backend`**. Create a **second** Vercel project for the API (do not replace the existing frontend project).
+
+### 1. Reuse Neon (no data migration)
+
+From the [Neon console](https://console.neon.tech) → your project → **Connection details**, copy the connection string. Choose the **pooled** endpoint (`-pooler` in the hostname) and keep `?sslmode=require`.
+
+Do **not** run `seed_demo.py` against this database. Skip `alembic upgrade` unless you know this repo has a migration that has not been applied yet. Existing tables and rows stay.
+
+### 2. Create the Vercel API project
+
+1. [vercel.com/new](https://vercel.com/new) → import this Git repo.
+2. **Root Directory** → `backend` (Framework Preset should show FastAPI).
+3. Do **not** set a build or output directory.
+4. Add environment variables **before** the first deploy (`DATABASE_URL` and `JWT_SECRET_KEY` are required at import time):
+
+| Name | Value |
+|---|---|
+| `APP_ENV` | `production` |
+| `DATABASE_URL` | Neon pooled URL from the console (same database that already has data) |
+| `JWT_SECRET_KEY` | from your friend if you can get it; otherwise `python -c "import secrets; print(secrets.token_urlsafe(48))"` (users must sign in again) |
+| `CORS_ORIGINS` | the live frontend origin, e.g. `https://your-frontend.vercel.app` (no trailing slash). Add `http://localhost:5173` if you call this API from local Vite. |
+| `ENABLE_DOCS` | `true` for a demo, `false` otherwise |
+| `ENFORCE_OFFICE_HOURS` | `false` if you need to demo outside office hours |
+| `RATE_LIMIT_ENABLED` | `true` |
+| `ETA_ML_ENABLED` | `true` |
+
+5. Deploy. The API will be at `https://<api-project>.vercel.app`. Check `GET /api/v1/health` and `GET /api/v1/health/ready`.
+
+Hobby WebSocket connections last up to **300 seconds**; the frontend already reconnects. Fan-out is still **in-process** (same as Render): if two Function instances are up, REST + the 30s poll remain the source of truth. Enable **Fluid compute** (default on new projects).
+
+### 3. Point the frontend at the new API
+
+In the **existing frontend** Vercel project → Settings → Environment Variables, change the Render host to the Vercel API host:
+
+| Name | Value |
+|---|---|
+| `VITE_API_BASE_URL` | `https://<api-project>.vercel.app/api/v1` |
+| `VITE_WS_BASE_URL` | `wss://<api-project>.vercel.app` |
+
+Redeploy the frontend (Vite bakes these in at build time). `CORS_ORIGINS` on the new API must include this frontend origin.
+
+### 4. Cut over from Render
+
+1. Confirm login, token create, officer call-next, and `/docs` on the Vercel API (same Neon data).
+2. Ask your friend to suspend the Render **web service** when you are happy. You can also leave it running; Neon will simply have two APIs pointed at it until someone turns Render off. Leave Neon running either way.
+3. To roll back without Render access, revert the two `VITE_*` frontend vars to the old Render API URL.
+
 ### Configuration (`.env`)
 
 | Variable | Notes |

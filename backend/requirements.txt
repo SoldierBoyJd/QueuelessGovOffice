@@ -9,5 +9,3 @@ pwdlib[argon2]==0.3.1
 pyjwt==2.15.1
 tzdata
 numpy==2.5.3
-scikit-learn==1.9.1
-joblib==1.6.0

@@ -1,5 +1,8 @@
 -r requirements.txt
 pytest==9.1.1
 httpx==0.28.1
+# Training only (`scripts/train_eta_model.py`); runtime inference uses numpy arrays.
+scikit-learn==1.9.1
+joblib==1.6.0
 # Bundled PostgreSQL for local dev/tests when no Postgres/Neon is available
 pgserver==0.1.4

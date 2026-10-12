@@ -15,7 +15,9 @@ npm run dev                               # http://localhost:5173  (must match C
 ```
 
 `VITE_API_BASE_URL` (default `http://localhost:8000/api/v1`) and `VITE_WS_BASE_URL` (default `ws://localhost:8000`)
-can be set in `.env`. In dev builds the login page lists the seeded demo accounts
+can be set in `.env`. In production set them on the frontend Vercel project to the API host
+(`https://…/api/v1` and `wss://…`) and redeploy — Vite inlines them at build time. See
+`../backend/README.md` → **Deploy on Vercel**. In dev builds the login page lists the seeded demo accounts
 (`citizen@`, `officer@`, `admin@`, `central@`, `super@` `demo.skiptheline.test`).
 
 ## How data flows
